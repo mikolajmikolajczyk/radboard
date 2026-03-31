@@ -1,0 +1,166 @@
+.reviewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reviewCard {
+  background: var(--hover-3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reviewCardDelegate {
+  border-left: 2px solid #5de4c7;
+  background: rgba(93, 228, 199, 0.06);
+}
+
+.delegateBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5de4c7;
+  background: rgba(93, 228, 199, 0.12);
+  border: 1px solid rgba(93, 228, 199, 0.25);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.reviewCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reviewAuthor {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-4);
+  flex: 1;
+}
+
+.verdictAccept {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #34c759;
+  font-weight: 600;
+}
+
+.verdictReject {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #f87171;
+  font-weight: 600;
+}
+
+.verdictNone {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-6);
+}
+
+.reviewSummary {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.reviewDate {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-6);
+}
+
+.reviewForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.verdictBtns {
+  display: flex;
+  gap: 6px;
+}
+
+.verdictBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border-3);
+  cursor: pointer;
+  background: var(--hover-3);
+  color: var(--text-4);
+  transition: all 0.12s;
+}
+
+.verdictBtn:hover {
+  border-color: var(--border-2);
+  color: var(--text-2);
+}
+
+.verdictBtnAccept {
+  background: rgba(52, 199, 89, 0.15);
+  border-color: rgba(52, 199, 89, 0.4);
+  color: #34c759;
+}
+
+.verdictBtnReject {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #f87171;
+}
+
+.patchCommentInput {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--bg-input, var(--hover-3));
+  border: 1px solid var(--border-3);
+  border-radius: 5px;
+  padding: 6px 8px;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.12s;
+}
+
+.patchCommentInput:focus {
+  border-color: var(--border-2);
+}
+
+.patchSubmitBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  background: var(--accent, #5de4c7);
+  color: #0a0a0a;
+  font-weight: 600;
+  transition: opacity 0.12s;
+  align-self: flex-start;
+}
+
+.patchSubmitBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sectionLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-5);
+  margin-bottom: 6px;
+}

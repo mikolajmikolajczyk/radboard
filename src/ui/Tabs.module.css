@@ -1,0 +1,59 @@
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.trigger {
+  font-family: var(--ui-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--text-5);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  transition: color 0.15s, background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.trigger:hover {
+  color: var(--text-3);
+  background: var(--hover-3);
+}
+
+.trigger[data-state="active"] {
+  color: var(--ui-accent);
+  background: var(--ui-accent-bg-subtle);
+  border-color: var(--ui-accent-border-subtle);
+}
+
+.badge {
+  font-family: var(--ui-font-mono);
+  font-size: 9px;
+  background: #f8b84c;
+  color: var(--bg-base);
+  border-radius: 8px;
+  padding: 0 5px;
+  min-width: 16px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.content {
+  flex: 1;
+}
+
+.content:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}

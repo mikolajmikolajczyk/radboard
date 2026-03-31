@@ -1,0 +1,92 @@
+.patchComment {
+  background: var(--hover-3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.patchReply {
+  margin-left: 12px;
+  background: transparent;
+  border-left: 2px solid var(--border-3);
+  border-radius: 0;
+  padding-left: 8px;
+}
+
+.patchCommentMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.patchCommentAuthor {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-4);
+  font-weight: 600;
+}
+
+.patchCommentDate {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-6);
+}
+
+.patchCommentBody {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-2);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.patchCommentActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.patchReaction {
+  font-size: 12px;
+  background: var(--hover-2);
+  border-radius: 4px;
+  padding: 2px 5px;
+  cursor: default;
+}
+
+.patchReplyBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-6);
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: color 0.12s;
+}
+
+.patchReplyBtn:hover {
+  color: var(--text-3);
+}
+
+.patchReplyForm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.patchReplyActions {
+  display: flex;
+  gap: 6px;
+}
+
+.patchCommentInput {
+  font-size: 11px;
+  background: var(--bg-input, var(--hover-3));
+}

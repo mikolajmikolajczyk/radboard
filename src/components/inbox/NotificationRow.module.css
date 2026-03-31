@@ -1,0 +1,395 @@
+.notifRow {
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  position: relative;
+}
+
+
+.notifRow:hover .rowActions {
+  opacity: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.header:hover {
+  background: var(--hover-3);
+}
+
+/* ── Status dots ── */
+
+.unreadDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #5de4c7;
+  flex-shrink: 0;
+}
+
+.readDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+/* ── Kind badge ── */
+
+.kindBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  min-width: 48px;
+  text-align: center;
+}
+
+.kindIssue   { background: rgba(93,228,199,0.12);  color: #5de4c7; }
+.kindPatch   { background: rgba(168,130,255,0.12); color: #a882ff; }
+.kindBranch  { background: rgba(248,184,76,0.12);  color: #f8b84c; }
+.kindTag     { background: rgba(248,113,113,0.12); color: #f87171; }
+.kindUnknown { background: var(--hover-3); color: var(--text-5); }
+
+/* ── Summary ── */
+
+.summary {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-2);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  justify-content: center;
+}
+
+.rowTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-6);
+  white-space: nowrap;
+}
+
+.rowAuthor   { color: var(--text-5); font-size: 10px; }
+.rowMetaSep  { color: var(--text-7); font-size: 10px; }
+.updateType  { color: var(--text-6); font-size: 10px; }
+
+.cobId {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-5);
+}
+
+.repoName {
+  font-size: 11px;
+  color: var(--text-5);
+  flex-shrink: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-6);
+  flex-shrink: 0;
+  min-width: 48px;
+  text-align: right;
+}
+
+/* ── Row actions (mark read / clear) ── */
+
+.rowActions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+}
+
+.rowActionBtn {
+  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-5);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  padding: 0;
+}
+
+.rowActionBtn:hover {
+  background: var(--hover-5);
+  color: var(--text-2);
+}
+
+/* ── Expand chevron (visual indicator, not interactive) ── */
+
+.expandChevron {
+  font-size: 9px;
+  color: var(--text-7);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ── Expanded section ── */
+
+.expandedSection {
+  padding: 4px 12px 10px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-bottom: 1px solid var(--border-1);
+}
+
+.loadingHint {
+  font-size: 11px;
+  color: var(--text-6);
+  padding: 4px 0;
+}
+
+/* ── Comment blocks ── */
+
+.commentBlock {
+  padding: 7px 10px;
+  border-radius: 5px;
+  background: var(--hover-2);
+  border-left: 2px solid transparent;
+}
+
+.descriptionBlock {
+  opacity: 0.65;
+}
+
+.commentIndented {
+  border-left-color: var(--border-3);
+}
+
+.commentNew {
+  border-left-color: rgba(248, 184, 76, 0.5);
+  background: rgba(248, 184, 76, 0.04);
+}
+
+.commentHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.commentReplyBtn {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 1px 6px;
+  border: 1px solid var(--border-4);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-4);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+
+.commentReplyBtn:hover {
+  border-color: var(--border-2);
+  background: var(--hover-4);
+  color: var(--text-1);
+}
+
+.commentAuthor {
+  font-size: 11px;
+  color: var(--text-4);
+  font-weight: 500;
+}
+
+.commentTime {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-6);
+}
+
+.commentBody {
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+
+/* ── Revision blocks ── */
+
+.revisionBlock {
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: var(--hover-2);
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.revisionBlock:hover {
+  background: var(--hover-3);
+}
+
+.revisionNew {
+  border-left-color: rgba(168, 130, 255, 0.5);
+  background: rgba(168, 130, 255, 0.04);
+}
+
+.revisionMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  flex-wrap: wrap;
+}
+
+.revisionId {
+  color: #a882ff;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.revisionArrow {
+  color: var(--text-7);
+  flex-shrink: 0;
+}
+
+.revisionCommits {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-4);
+}
+
+.revisionLabel {
+  color: var(--text-7);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.revisionHash {
+  color: var(--text-3);
+}
+
+.revisionAuthor {
+  color: var(--text-5);
+  font-size: 10px;
+  margin-left: auto;
+}
+
+.revisionTime {
+  color: var(--text-6);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.revisionDesc {
+  color: var(--text-5);
+  font-size: 11px;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+/* ── Reply form ── */
+
+.replyBtn {
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-5);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-5);
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.replyBtn:hover {
+  background: var(--hover-4);
+  color: var(--text-2);
+}
+
+.replyForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.replyTextarea {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--border-5);
+  background: var(--bg-base);
+  color: var(--text-1);
+  font-size: 12px;
+  resize: vertical;
+  font-family: 'IBM Plex Sans', sans-serif;
+  box-sizing: border-box;
+}
+
+.replyActions {
+  display: flex;
+  gap: 6px;
+}
+
+.replySubmit {
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(93, 228, 199, 0.35);
+  background: rgba(93, 228, 199, 0.1);
+  color: #5de4c7;
+  cursor: pointer;
+}
+
+.replySubmit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.replyCancel {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-5);
+  background: transparent;
+  color: var(--text-5);
+  cursor: pointer;
+}

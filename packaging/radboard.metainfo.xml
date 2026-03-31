@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.mikolajczyk.radboard</id>
+  <name>radboard</name>
+  <summary>Kanban board for Radicle issues</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      radboard is a desktop Kanban board for managing issues and patches
+      on the Radicle peer-to-peer code collaboration network.
+    </p>
+  </description>
+  <launchable type="desktop-id">radboard.desktop</launchable>
+  <url type="homepage">https://app.radicle.xyz/nodes/seed.radicle.xyz/rad:z2tFBFMaKwpSCDSMiym3u8TxVCNvQ</url>
+  <provides>
+    <binary>radboard</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+</component>

@@ -1,0 +1,132 @@
+/* Fonts — swap for @fontsource packages if bundling offline is needed */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Theme variables ───────────────────────────────────────────────────────── */
+
+:root {
+  /* Backgrounds */
+  --bg-base:        #0e1117;
+  --bg-surface:     #0b0e14;
+  --bg-card:        #161b26;
+  --bg-card-hover:  #1c2333;
+  --bg-input:       #1e2535;
+  --bg-input-hover: #263044;
+
+  /* Text (1 = most visible → 8 = near invisible) */
+  --text-1: #e2e8f0;
+  --text-2: #cbd5e1;
+  --text-3: #94a3b8;
+  --text-4: #64748b;
+  --text-5: #475569;
+  --text-6: #334155;
+  --text-7: #1e293b;
+  --text-8: #2d3748;
+
+  /* Borders */
+  --border-1: rgba(255, 255, 255, 0.05);
+  --border-2: rgba(255, 255, 255, 0.07);
+  --border-3: rgba(255, 255, 255, 0.08);
+  --border-4: rgba(255, 255, 255, 0.10);
+  --border-5: rgba(255, 255, 255, 0.12);
+  --border-6: rgba(255, 255, 255, 0.14);
+  --border-7: rgba(255, 255, 255, 0.18);
+  --border-8: rgba(255, 255, 255, 0.20);
+
+  /* Hover overlays */
+  --hover-1: rgba(255, 255, 255, 0.03);
+  --hover-2: rgba(255, 255, 255, 0.04);
+  --hover-3: rgba(255, 255, 255, 0.05);
+  --hover-4: rgba(255, 255, 255, 0.06);
+
+  /* Column accents — header bg, badge bg, drop zone border */
+  --col-new-text:       #818cf8;
+  --col-new-header-bg:  rgba(99, 115, 210, 0.10);
+  --col-new-badge-bg:   rgba(99, 115, 210, 0.18);
+  --col-new-border:     rgba(99, 115, 210, 0.15);
+
+  --col-open-text:      #f59e0b;
+  --col-open-header-bg: rgba(249, 168, 37, 0.08);
+  --col-open-badge-bg:  rgba(249, 168, 37, 0.15);
+  --col-open-border:    rgba(249, 168, 37, 0.12);
+
+  --col-prog-text:      #38bdf8;
+  --col-prog-header-bg: rgba(56, 189, 248, 0.08);
+  --col-prog-badge-bg:  rgba(56, 189, 248, 0.15);
+  --col-prog-border:    rgba(56, 189, 248, 0.12);
+
+  --col-closed-text:      #5de4c7;
+  --col-closed-header-bg: rgba(93, 228, 199, 0.07);
+  --col-closed-badge-bg:  rgba(93, 228, 199, 0.14);
+  --col-closed-border:    rgba(93, 228, 199, 0.12);
+}
+
+[data-theme="light"] {
+  /* Backgrounds */
+  --bg-base:        #f1f5f9;
+  --bg-surface:     #e4eaf3;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f8fafc;
+  --bg-input:       #f8fafc;
+  --bg-input-hover: #f1f5f9;
+
+  /* Text */
+  --text-1: #0f172a;
+  --text-2: #1e293b;
+  --text-3: #475569;
+  --text-4: #64748b;
+  --text-5: #94a3b8;
+  --text-6: #b0bdd0;
+  --text-7: #d1dbe8;
+  --text-8: #b0bdd0;
+
+  /* Borders */
+  --border-1: rgba(0, 0, 0, 0.04);
+  --border-2: rgba(0, 0, 0, 0.07);
+  --border-3: rgba(0, 0, 0, 0.09);
+  --border-4: rgba(0, 0, 0, 0.11);
+  --border-5: rgba(0, 0, 0, 0.13);
+  --border-6: rgba(0, 0, 0, 0.16);
+  --border-7: rgba(0, 0, 0, 0.19);
+  --border-8: rgba(0, 0, 0, 0.22);
+
+  /* Hover overlays */
+  --hover-1: rgba(0, 0, 0, 0.02);
+  --hover-2: rgba(0, 0, 0, 0.03);
+  --hover-3: rgba(0, 0, 0, 0.04);
+  --hover-4: rgba(0, 0, 0, 0.05);
+
+  /* Column accents — slightly higher alpha for light bg readability */
+  --col-new-text:       #6366f1;
+  --col-new-header-bg:  rgba(99, 102, 241, 0.08);
+  --col-new-badge-bg:   rgba(99, 102, 241, 0.14);
+  --col-new-border:     rgba(99, 102, 241, 0.20);
+
+  --col-open-text:      #d97706;
+  --col-open-header-bg: rgba(217, 119, 6, 0.08);
+  --col-open-badge-bg:  rgba(217, 119, 6, 0.14);
+  --col-open-border:    rgba(217, 119, 6, 0.20);
+
+  --col-prog-text:      #0284c7;
+  --col-prog-header-bg: rgba(2, 132, 199, 0.08);
+  --col-prog-badge-bg:  rgba(2, 132, 199, 0.14);
+  --col-prog-border:    rgba(2, 132, 199, 0.20);
+
+  --col-closed-text:      #0d9488;
+  --col-closed-header-bg: rgba(13, 148, 136, 0.08);
+  --col-closed-badge-bg:  rgba(13, 148, 136, 0.14);
+  --col-closed-border:    rgba(13, 148, 136, 0.20);
+}

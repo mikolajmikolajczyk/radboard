@@ -1,0 +1,219 @@
+.board {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  flex: 1;
+  overflow-x: auto;
+  align-items: flex-start;
+  user-select: none;
+}
+
+.board > * {
+  flex: 0 0 calc((100% - 12px * (var(--visible-cols, 4) - 1)) / var(--visible-cols, 4));
+  min-width: 0;
+}
+
+.dragging,
+.dragging * {
+  cursor: grabbing !important;
+}
+
+.panning,
+.panning * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.menuOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+}
+
+.colorMenu {
+  position: fixed;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--surface-2, #1e1e2e);
+  border: 1px solid var(--border-2, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  transform: translate(-50%, 8px);
+}
+
+.swatchRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.swatch:hover {
+  transform: scale(1.2);
+}
+
+.swatchActive {
+  border-color: var(--text-1, #fff);
+}
+
+.swatchReset {
+  background: none !important;
+  border: 2px dashed var(--border-4, rgba(255,255,255,0.25));
+  position: relative;
+}
+
+.swatchReset::before,
+.swatchReset::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 1.5px;
+  background: var(--text-5, rgba(255,255,255,0.35));
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.swatchReset::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.swatchDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-2, rgba(255,255,255,0.1));
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.swatchCustom {
+  background: conic-gradient(
+    hsl(0,100%,60%), hsl(45,100%,60%), hsl(90,100%,50%),
+    hsl(135,100%,45%), hsl(180,100%,45%), hsl(225,100%,60%),
+    hsl(270,100%,65%), hsl(315,100%,60%), hsl(360,100%,60%)
+  ) !important;
+}
+
+.customPickerWrap {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface-2, #1e1e2e);
+  border: 1px solid var(--border-2, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.customPickerWrap :global(.react-colorful) {
+  width: 180px;
+  height: 160px;
+}
+
+.customPickerWrap :global(.react-colorful__saturation) {
+  border-radius: 6px 6px 0 0;
+}
+
+.customPickerWrap :global(.react-colorful__hue) {
+  border-radius: 6px;
+  height: 12px;
+  margin-top: 8px;
+}
+
+.customPickerWrap :global(.react-colorful__pointer) {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.customPickerFooter {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.hexInput {
+  flex: 1;
+  background: var(--hover-2, rgba(255,255,255,0.07));
+  border: 1px solid var(--border-2, rgba(255,255,255,0.1));
+  border-radius: 5px;
+  color: var(--text-1);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 7px;
+  outline: none;
+  min-width: 0;
+}
+
+.hexInput:focus {
+  border-color: var(--border-4, rgba(255,255,255,0.25));
+}
+
+.applyBtn {
+  background: var(--hover-2, rgba(255,255,255,0.07));
+  border: 1px solid var(--border-2, rgba(255,255,255,0.1));
+  border-radius: 5px;
+  color: var(--text-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.applyBtn:hover {
+  background: var(--hover-3, rgba(255,255,255,0.12));
+}
+
+.removeColBtn {
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-2, rgba(255,255,255,0.08));
+  margin-top: 2px;
+  padding: 6px 4px 2px;
+  color: var(--col-closed-text, #ff6b6b);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.removeColBtn:hover {
+  color: #ff4444;
+}
+
+.colGhost {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 7px;
+  background: var(--hover-2);
+  border: 1px solid var(--border-3);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+

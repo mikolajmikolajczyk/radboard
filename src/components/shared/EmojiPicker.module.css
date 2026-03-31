@@ -1,0 +1,36 @@
+.pickerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.emojiPicker {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 101;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-3);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  width: 160px;
+}
+
+.emojiBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: background 0.1s;
+}
+
+.emojiBtn:hover {
+  background: var(--hover-3);
+}

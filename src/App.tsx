@@ -1,0 +1,1164 @@
+import { useEffect, useState, startTransition, useMemo } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { useZoom } from './hooks/useZoom';
+import { useTheme } from './hooks/useTheme';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import KanbanBoard from './components/kanban/KanbanBoard';
+import IssueDetail from './components/issues/IssueDetail';
+import IssuesView from './components/issues/IssuesView';
+import PatchesView from './components/patches/PatchesView';
+import WorktreesView from './components/worktrees/WorktreesView';
+import FilesView from './components/files/FilesView';
+import PatchFilesView from './components/patches/PatchFilesView';
+import InboxView from './components/inbox/InboxView';
+import GlobalInboxPanel from './components/inbox/GlobalInboxPanel';
+import SettingsModal from './components/settings/SettingsModal';
+import WelcomeScreen from './components/welcome/WelcomeScreen';
+import AddRepoModal from './components/shared/AddRepoModal';
+import NewIssueModal from './components/issues/NewIssueModal';
+import ConfirmDialog from './components/shared/ConfirmDialog';
+import type { IssueComment, IssueDetail as IssueDetailType, KanbanColumnData, PatchRef } from './types/kanban';
+import type { AppSetup, BannedEntry, NotificationCountData, NotificationData, RadicleIdentity, RawIssueData, RawPatchData, RepoInfo } from './types/radboard';
+import type { FileDiff } from './components/patches/DiffView';
+import { Tabs, TabsList, TabsTrigger } from './ui';
+import { RepoProvider } from './contexts/RepoContext';
+import { ActionsProvider } from './contexts/ActionsContext';
+import { TerminalProvider, useTerminal } from './contexts/TerminalContext';
+import TerminalPanel from './components/terminal/TerminalPanel';
+
+type MainView = 'kanban' | 'issues' | 'patches' | 'worktrees' | 'files' | 'inbox' | 'patch-files';
+
+interface PatchFilesCtx {
+  fileDiffs: FileDiff[];
+  commitOid: string;
+  patchTitle: string;
+  initialPath: string | null;
+  patchId: string;
+  initialRevisionId: string;
+}
+import './App.css';
+import styles from './App.module.css';
+
+// ── Data mapping ──────────────────────────────────────────────────────────────
+
+function msToDate(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function defaultColumn(state: 'open' | 'closed'): string {
+  return state === 'open' ? 'new' : 'closed';
+}
+
+const STATIC_COL_IDS = new Set(['new', 'open', 'closed']);
+
+function titleFromId(id: string): string {
+  return id.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+}
+
+function issuesToColumns(
+  issues: RawIssueData[],
+  rid: string,
+  boardState: Record<string, string>,
+  columnOrder: string[],
+  bannedUsers: BannedEntry[] = [],
+  rawPatches: RawPatchData[] = [],
+): [KanbanColumnData[], Map<string, IssueDetailType>] {
+  const bannedIssueDids = new Set(
+    bannedUsers.filter((b) => b.scope === 'all' || b.scope === 'issues').map((b) => b.did),
+  );
+  // Exclude static IDs defensively — if they leaked into saved columnOrder they'd cause doubling
+  const safeOrder = columnOrder.filter((id) => !STATIC_COL_IDS.has(id));
+
+  // Discover dynamic column ids from state: labels
+  const dynamicIds = new Set<string>(safeOrder);
+  for (const raw of issues) {
+    for (const label of raw.labels) {
+      if (label.startsWith('state:')) {
+        const id = label.slice(6);
+        if (!STATIC_COL_IDS.has(id)) dynamicIds.add(id);
+      }
+    }
+  }
+
+  // Ordered: persisted order first, then any newly discovered ids
+  const orderedDynamic = [
+    ...safeOrder,
+    ...[...dynamicIds].filter((id) => !safeOrder.includes(id)),
+  ];
+
+  const cols: Record<string, KanbanColumnData> = {
+    new:    { id: 'new',    title: 'New',    issues: [], isStatic: true },
+    open:   { id: 'open',   title: 'Open',   issues: [], isStatic: true },
+    closed: { id: 'closed', title: 'Closed', issues: [], isStatic: true },
+  };
+  for (const id of orderedDynamic) {
+    cols[id] = { id, title: titleFromId(id), issues: [] };
+  }
+
+  // Build inverted index: 7-char hex prefix → patches that mention it
+  // This turns O(N*M) string scans into O(M) build + O(1) lookup
+  const patchesByPrefix = new Map<string, RawPatchData[]>();
+  const HEX7 = /[0-9a-f]{7}/gi;
+  for (const patch of rawPatches) {
+    const seen = new Set<string>();
+    const text = patch.title + ' ' + patch.description;
+    for (const m of text.matchAll(HEX7)) {
+      const key = m[0].toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!patchesByPrefix.has(key)) patchesByPrefix.set(key, []);
+      patchesByPrefix.get(key)!.push(patch);
+    }
+  }
+
+  const detailMap = new Map<string, IssueDetailType>();
+
+  for (const raw of issues) {
+    if (bannedIssueDids.has(raw.authorDid)) continue;
+    const upvotes = raw.reactions.find((r) => r.emoji === '👍')?.authors.length ?? 0;
+    const downvotes = raw.reactions.find((r) => r.emoji === '👎')?.authors.length ?? 0;
+    const prefix = raw.id.slice(0, 7);
+    const matchingPatches = patchesByPrefix.get(prefix) ?? [];
+    const openPatchCount = matchingPatches.filter((p) => p.state === 'open').length;
+    const indicator = {
+      ...(upvotes > 0 && { upvotes }),
+      ...(downvotes > 0 && { downvotes }),
+      ...(raw.commentCount > 0 && { comments: raw.commentCount }),
+      ...(openPatchCount > 0 && { patches: openPatchCount }),
+    };
+    const card = {
+      id: raw.id,
+      author: raw.author,
+      authorDid: raw.authorDid,
+      title: raw.title,
+      labels: raw.labels.map((l) => ({ text: l, variant: l })),
+      indicator: Object.keys(indicator).length > 0 ? indicator : undefined,
+    };
+
+    detailMap.set(raw.id, {
+      ...card,
+      rid,
+      rootId: raw.rootId,
+      status: raw.state === 'open' ? 'open' : 'closed',
+      description: raw.description,
+      createdAt: msToDate(raw.createdAt),
+      reactions: raw.reactions,
+      comments: null,
+      commentCount: raw.commentCount,
+      patches: matchingPatches.map((p) => ({
+        id: p.id,
+        title: p.title,
+        author: p.author,
+        authorDid: p.authorDid,
+        state: p.state,
+        head: p.head,
+      })),
+    });
+
+    // state: label determines dynamic column (first one wins); boardState only matters for new/open
+    const stateLabel = raw.labels.find((l) => l.startsWith('state:'));
+    const labelCol = stateLabel ? stateLabel.slice(6) : null;
+
+    const colId = labelCol ?? boardState[raw.id] ?? defaultColumn(raw.state);
+    (cols[colId] ?? cols[defaultColumn(raw.state)]).issues.push(card);
+  }
+
+  return [
+    [cols.new, cols.open, ...orderedDynamic.map((id) => cols[id]), cols.closed],
+    detailMap,
+  ];
+}
+
+// ── Window controls ────────────────────────────────────────────────────────────
+
+function WindowControls() {
+  const win = getCurrentWindow();
+  return (
+    <div className={styles.windowControls}>
+      <button className={`${styles.winBtn} ${styles.winMinimize}`} onClick={() => win.minimize()} aria-label="Minimize" />
+      <button className={`${styles.winBtn} ${styles.winMaximize}`} onClick={() => win.toggleMaximize()} aria-label="Maximize" />
+      <button className={`${styles.winBtn} ${styles.winClose}`} onClick={() => win.close()} aria-label="Close" />
+    </div>
+  );
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
+
+export default function App() {
+  const [setup, setSetup] = useState<AppSetup | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
+
+  const [myDid, setMyDid] = useState<string | null>(null);
+  const [repoDelegateDids, setRepoDelegateDids] = useState<Map<string, string[]>>(new Map());
+  const [repoDefaultBranches, setRepoDefaultBranches] = useState<Map<string, string>>(new Map());
+
+  const [activeRid, setActiveRid] = useState<string | null>(null);
+  const [repoNames, setRepoNames] = useState<Map<string, string>>(new Map());
+  const [addRepoOpen, setAddRepoOpen] = useState(false);
+  const [confirmRemoveRid, setConfirmRemoveRid] = useState<string | null>(null);
+  const [columns, setColumns] = useState<KanbanColumnData[]>([]);
+  const [issueDetails, setIssueDetails] = useState<Map<string, IssueDetailType>>(new Map());
+  const [selectedIssue, setSelectedIssue] = useState<IssueDetailType | null>(null);
+  const [rawPatches, setRawPatches] = useState<RawPatchData[]>([]);
+  const [selectedPatch, setSelectedPatch] = useState<PatchRef | null>(null);
+  const [activeView, setActiveView] = useState<MainView>('kanban');
+  const [patchFilesCtx, setPatchFilesCtx] = useState<PatchFilesCtx | null>(null);
+  const [patchRevisionOverride, setPatchRevisionOverride] = useState<string | null>(null);
+  const [patchReturnIssueId, setPatchReturnIssueId] = useState<string | null>(null);
+  const [patchReturnView, setPatchReturnView] = useState<MainView | null>(null);
+  const [selectedIssueInView, setSelectedIssueInView] = useState<string | null>(null);
+  const [issueReturnView, setIssueReturnView] = useState<MainView | null>(null);
+  const [filesCommitOid, setFilesCommitOid] = useState<string | null>(null);
+  const [filesInitialPath, setFilesInitialPath] = useState<string | null>(null);
+  const [filesReturnView, setFilesReturnView] = useState<MainView | null>(null);
+  const [filesRefLabel, setFilesRefLabel] = useState<string | null>(null);
+  const [isRepoLoading, setIsRepoLoading] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newIssueOpen, setNewIssueOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [globalInboxOpen, setGlobalInboxOpen] = useState(false);
+  const [globalNotifications, setGlobalNotifications] = useState<NotificationData[]>([]);
+  const [globalUnreadCount, setGlobalUnreadCount] = useState(0);
+  const { zoom, zoomIn, zoomOut, resetZoom, canZoomIn, canZoomOut } = useZoom();
+  const { theme, toggle: toggleTheme } = useTheme();
+
+  // Load persisted config on startup
+  useEffect(() => {
+    invoke<AppSetup | null>('load_config')
+      .then((saved) => {
+        if (saved) {
+          setSetup(saved);
+          setActiveRid(saved.rids[0] ?? null);
+        }
+      })
+      .finally(() => setConfigLoaded(true));
+    invoke<RadicleIdentity | null>('get_identity')
+      .then((id) => setMyDid(id?.did ?? null))
+      .catch(console.error);
+  }, []);
+
+  // Fetch repo names whenever setup changes
+  useEffect(() => {
+    if (!setup) return;
+    invoke<RepoInfo[]>('list_repos')
+      .then((repos) => {
+        setRepoNames(new Map(repos.map((r) => [r.rid, r.name])));
+        setRepoDelegateDids(new Map(repos.map((r) => [r.rid, r.delegateDids])));
+        setRepoDefaultBranches(new Map(repos.map((r) => [r.rid, r.defaultBranch])));
+      })
+      .catch(console.error);
+  }, [setup]);
+
+  function fetchNotifications(rid: string, limit: number) {
+    invoke<NotificationData[]>('list_notifications', { rid, limit })
+      .then((data) => {
+        setNotifications(data);
+        setUnreadCount(data.filter((n) => n.status === 'unread').length);
+      })
+      .catch(console.error);
+  }
+
+  function fetchGlobalNotifications(limit: number) {
+    invoke<NotificationData[]>('list_notifications', { rid: null, limit })
+      .then((data) => {
+        setGlobalNotifications(data);
+        setGlobalUnreadCount(data.filter((n) => n.status === 'unread').length);
+      })
+      .catch(console.error);
+  }
+
+  // Fetch notification list when switching to inbox view or changing repo
+  useEffect(() => {
+    if (activeView !== 'inbox' || !activeRid || !setup) return;
+    fetchNotifications(activeRid, setup.inboxPageSize ?? 50);
+  }, [activeView, activeRid, setup]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll counts every 30s; auto-refresh list when count increases
+  useEffect(() => {
+    if (!setup || !activeRid) return;
+    const limit = setup.inboxPageSize ?? 50;
+    const rid = activeRid;
+
+    const poll = () => {
+      invoke<NotificationCountData>('notification_count', { rid })
+        .then((c) => {
+          setUnreadCount((prev) => {
+            if (c.unread > prev && activeView === 'inbox') fetchNotifications(rid, limit);
+            return c.unread;
+          });
+        })
+        .catch(console.error);
+      invoke<NotificationCountData>('notification_count', { rid: null })
+        .then((c) => {
+          setGlobalUnreadCount((prev) => {
+            if (c.unread > prev && globalInboxOpen) fetchGlobalNotifications(limit);
+            return c.unread;
+          });
+        })
+        .catch(console.error);
+    };
+
+    const interval = setInterval(poll, 30_000);
+    return () => clearInterval(interval);
+  }, [setup, activeRid, activeView, globalInboxOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refresh on window focus
+  useEffect(() => {
+    if (!setup || !activeRid) return;
+    const limit = setup.inboxPageSize ?? 50;
+    const rid = activeRid;
+    const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      if (!focused) return;
+      invoke<NotificationCountData>('notification_count', { rid })
+        .then((c) => {
+          setUnreadCount(c.unread);
+          if (activeView === 'inbox') fetchNotifications(rid, limit);
+        })
+        .catch(console.error);
+      invoke<NotificationCountData>('notification_count', { rid: null })
+        .then((c) => {
+          setGlobalUnreadCount(c.unread);
+          if (globalInboxOpen) fetchGlobalNotifications(limit);
+        })
+        .catch(console.error);
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, [setup, activeRid, activeView, globalInboxOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll issues + patches every 60s in the background
+  useEffect(() => {
+    if (!activeRid || !setup) return;
+    const rid = activeRid;
+    const interval = setInterval(() => {
+      Promise.all([
+        invoke<RawIssueData[]>('list_issues', { rid }),
+        invoke<RawPatchData[]>('list_patches', { rid }),
+      ]).then(([issues, patches]) => {
+        setRawPatches(patches);
+        const boardState = setup.boards[rid] ?? {};
+        const columnOrder = setup.columnOrder?.[rid] ?? [];
+        const [cols, details] = issuesToColumns(issues, rid, boardState, columnOrder, setup.bannedUsers, patches);
+        setColumns(cols);
+        setIssueDetails(details);
+      }).catch(console.error);
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [activeRid, setup]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load issues when active repo changes — issues and patches load independently
+  useEffect(() => {
+    if (!activeRid || !setup) return;
+    let cancelled = false;
+    setIsRepoLoading(true);
+    const rid = activeRid;
+
+    const issuesPromise = invoke<RawIssueData[]>('list_issues', { rid });
+    const patchesPromise = invoke<RawPatchData[]>('list_patches', { rid });
+
+    // Show issues as soon as they arrive (without patch indicators yet)
+    issuesPromise.then((issues) => {
+      if (cancelled) return;
+      const boardState = setup.boards[rid] ?? {};
+      const columnOrder = setup.columnOrder?.[rid] ?? [];
+      const [cols, details] = issuesToColumns(issues, rid, boardState, columnOrder, setup.bannedUsers, []);
+      startTransition(() => {
+        setColumns(cols);
+        setIssueDetails(details);
+      });
+    }).catch(console.error);
+
+    // When patches arrive, recompute with both
+    Promise.all([issuesPromise, patchesPromise]).then(([issues, patches]) => {
+      if (cancelled) return;
+      const boardState = setup.boards[rid] ?? {};
+      const columnOrder = setup.columnOrder?.[rid] ?? [];
+      const [cols, details] = issuesToColumns(issues, rid, boardState, columnOrder, setup.bannedUsers, patches);
+      startTransition(() => {
+        setRawPatches(patches);
+        setColumns(cols);
+        setIssueDetails(details);
+      });
+    }).catch(console.error).finally(() => {
+      if (!cancelled) setIsRepoLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [activeRid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleSetup(s: AppSetup) {
+    const full = { ...s, boards: s.boards ?? {} };
+    setSetup(full);
+    setActiveRid(full.rids[0] ?? null);
+    invoke('save_config', { config: full }).catch(console.error);
+  }
+
+  function handleRemoveRepo(rid: string) {
+    if (!setup) return;
+    const updated = { ...setup, rids: setup.rids.filter((r) => r !== rid) };
+    setSetup(updated);
+    if (activeRid === rid) setActiveRid(updated.rids[0] ?? null);
+    invoke('save_config', { config: updated }).catch(console.error);
+    setConfirmRemoveRid(null);
+  }
+
+  function handleAddRepo(rid: string, localPath?: string) {
+    if (!setup || setup.rids.includes(rid)) return;
+    const localRepoPaths = localPath
+      ? { ...(setup.localRepoPaths ?? {}), [rid]: localPath }
+      : setup.localRepoPaths;
+    const updated = { ...setup, rids: [...setup.rids, rid], ...(localRepoPaths ? { localRepoPaths } : {}) };
+    setSetup(updated);
+    setActiveRid(rid);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleLocalPathChange(rid: string, path: string) {
+    if (!setup) return;
+    const localRepoPaths = { ...(setup.localRepoPaths ?? {}), [rid]: path };
+    const updated = { ...setup, localRepoPaths };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleEditorChange(cmd: string) {
+    if (!setup) return;
+    const updated = { ...setup, preferredEditor: cmd };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleInboxPageSizeChange(n: number) {
+    if (!setup) return;
+    const updated = { ...setup, inboxPageSize: n };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleColumnsChange(newCols: KanbanColumnData[]) {
+    if (!setup || !activeRid) return;
+    // Rebuild board state from current column positions
+    const positions: Record<string, string> = {};
+    for (const col of newCols) {
+      for (const issue of col.issues) {
+        positions[issue.id] = col.id;
+      }
+    }
+    const updated = {
+      ...setup,
+      boards: { ...setup.boards, [activeRid]: positions },
+    };
+    setSetup(updated);
+    setColumns(newCols);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleIssueMoved(issueId: string, fromColId: string, toColId: string) {
+    if (!activeRid || !setup || fromColId === toColId) return;
+    const issue = issueDetails.get(issueId);
+    if (!issue) return;
+
+    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:'));
+
+    if (toColId === 'closed') {
+      invoke('set_issue_state', { rid: activeRid, issueId, state: 'closed' }).catch(console.error);
+    } else if (fromColId === 'closed') {
+      invoke('set_issue_state', { rid: activeRid, issueId, state: 'open' }).catch(console.error);
+    }
+
+    const STATIC = ['new', 'open', 'closed'];
+    const newLabels = STATIC.includes(toColId)
+      ? otherLabels
+      : [...otherLabels, `state:${toColId}`];
+
+    // Capture the updated board state now (before the async call), so the
+    // refresh after label_issue uses the new column position rather than the
+    // stale closure value that predates handleColumnsChange's setSetup call.
+    const rid = activeRid;
+    const updatedBoardState = {
+      ...(setup.boards[rid] ?? {}),
+      [issueId]: toColId,
+    };
+    const columnOrder = setup.columnOrder?.[rid] ?? [];
+    const bannedUsers = setup.bannedUsers ?? [];
+    const keepSelectedId = selectedIssue?.id;
+
+    invoke('label_issue', { rid, issueId, labels: newLabels })
+      .then(() => Promise.all([
+        invoke<RawIssueData[]>('list_issues', { rid }),
+        invoke<RawPatchData[]>('list_patches', { rid }),
+      ]))
+      .then(([issues, patches]) => {
+        setRawPatches(patches);
+        const [cols, details] = issuesToColumns(issues, rid, updatedBoardState, columnOrder, bannedUsers, patches);
+        setColumns(cols);
+        setIssueDetails(details);
+        if (keepSelectedId) {
+          setSelectedIssue((prev) => prev?.id === keepSelectedId ? (details.get(keepSelectedId) ?? null) : prev);
+        }
+      })
+      .catch(console.error);
+  }
+
+  function handleExplorerUrlChange(url: string) {
+    if (!setup) return;
+    const updated = { ...setup, explorerUrl: url };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleSeedNodeChange(node: string) {
+    if (!setup) return;
+    const updated = { ...setup, seedNode: node };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleVisibleColumnsChange(n: number) {
+    if (!setup) return;
+    const updated = { ...setup, visibleColumns: n };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleColumnRemove(colId: string) {
+    if (!setup || !activeRid) return;
+    const rid = activeRid;
+
+    // Remove state: label from any issues currently in this column
+    const col = columns.find((c) => c.id === colId);
+    if (col) {
+      for (const issue of col.issues) {
+        const detail = issueDetails.get(issue.id);
+        if (!detail) continue;
+        const newLabels = detail.labels.map((l) => l.text).filter((l) => l !== `state:${colId}`);
+        invoke('label_issue', { rid, issueId: issue.id, labels: newLabels }).catch(console.error);
+      }
+    }
+
+    // Remove from columnOrder and columnColors
+    const newOrder = (setup.columnOrder?.[rid] ?? []).filter((id) => id !== colId);
+    const newColors = { ...setup.columnColors?.[rid] };
+    delete newColors[colId];
+    const updated = {
+      ...setup,
+      columnOrder: { ...setup.columnOrder, [rid]: newOrder },
+      columnColors: { ...setup.columnColors, [rid]: newColors },
+    };
+    setSetup(updated);
+    setColumns((prev) => prev.filter((c) => c.id !== colId));
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleColumnColorChange(colId: string, color: string | null) {
+    if (!setup || !activeRid) return;
+    const rid = activeRid;
+    const existing = setup.columnColors?.[rid] ?? {};
+    const updated = color === null
+      ? { ...existing }
+      : { ...existing, [colId]: color };
+    if (color === null) delete updated[colId];
+    const next = { ...setup, columnColors: { ...setup.columnColors, [rid]: updated } };
+    setSetup(next);
+    invoke('save_config', { config: next }).catch(console.error);
+  }
+
+  function handleColumnsReorder(newCols: KanbanColumnData[]) {
+    if (!setup || !activeRid) return;
+    const dynamicOrder = newCols
+      .filter((c) => !c.isStatic && !STATIC_COL_IDS.has(c.id))
+      .map((c) => c.id);
+    const updated = {
+      ...setup,
+      columnOrder: { ...setup.columnOrder, [activeRid]: dynamicOrder },
+    };
+    setSetup(updated);
+    setColumns(newCols);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleRefresh(keepSelectedId?: string) {
+    if (!activeRid || !setup) return;
+    Promise.all([
+      invoke<RawIssueData[]>('list_issues', { rid: activeRid }),
+      invoke<RawPatchData[]>('list_patches', { rid: activeRid }),
+    ]).then(([issues, patches]) => {
+      setRawPatches(patches);
+      const boardState = setup.boards[activeRid] ?? {};
+      const columnOrder = setup.columnOrder?.[activeRid] ?? [];
+      const [cols, details] = issuesToColumns(issues, activeRid, boardState, columnOrder, setup.bannedUsers, patches);
+      setColumns(cols);
+      setIssueDetails(details);
+      if (keepSelectedId) {
+        setSelectedIssue(details.get(keepSelectedId) ?? null);
+      }
+    }).catch(console.error);
+  }
+
+  function handleCommentsLoaded(issueId: string, comments: IssueComment[]) {
+    setIssueDetails((prev) => {
+      const existing = prev.get(issueId);
+      if (!existing) return prev;
+      const next = new Map(prev);
+      next.set(issueId, { ...existing, comments });
+      return next;
+    });
+  }
+
+  function handleStateChange(issueId: string, newColumnId: string) {
+    if (!activeRid || !setup) return;
+    const currentColId = columns.find((col) => col.issues.some((i) => i.id === issueId))?.id ?? 'new';
+    if (currentColId === newColumnId) return;
+
+    const issue = issueDetails.get(issueId);
+    if (!issue) return;
+    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:'));
+
+    if (newColumnId === 'closed') {
+      invoke('set_issue_state', { rid: activeRid, issueId, state: 'closed' }).catch(console.error);
+    } else if (currentColId === 'closed') {
+      invoke('set_issue_state', { rid: activeRid, issueId, state: 'open' }).catch(console.error);
+    }
+
+    const STATIC = ['new', 'open', 'closed'];
+    const newLabels = STATIC.includes(newColumnId) ? otherLabels : [...otherLabels, `state:${newColumnId}`];
+
+    const updatedBoards = { ...setup.boards, [activeRid]: { ...(setup.boards[activeRid] ?? {}), [issueId]: newColumnId } };
+    const updatedSetup = { ...setup, boards: updatedBoards };
+    setSetup(updatedSetup);
+    invoke('save_config', { config: updatedSetup }).catch(console.error);
+
+    invoke('label_issue', { rid: activeRid, issueId, labels: newLabels })
+      .then(() => Promise.all([
+        invoke<RawIssueData[]>('list_issues', { rid: activeRid }),
+        invoke<RawPatchData[]>('list_patches', { rid: activeRid }),
+      ]))
+      .then(([issues, patches]) => {
+        setRawPatches(patches);
+        const boardState = updatedSetup.boards[activeRid] ?? {};
+        const columnOrder = updatedSetup.columnOrder?.[activeRid] ?? [];
+        const [cols, details] = issuesToColumns(issues, activeRid, boardState, columnOrder, updatedSetup.bannedUsers ?? [], patches);
+        setColumns(cols);
+        setIssueDetails(details);
+        setSelectedIssue((prev) => prev?.id === issueId ? (details.get(issueId) ?? null) : prev);
+      })
+      .catch(console.error);
+  }
+
+  function handleBanUser(did: string, alias: string, scope: 'all' | 'issues' | 'comments') {
+    if (!setup) return;
+    const existing = setup.bannedUsers ?? [];
+    if (existing.some((b) => b.did === did)) return;
+    const updated = { ...setup, bannedUsers: [...existing, { did, alias, scope }] };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleUnbanUser(did: string) {
+    if (!setup) return;
+    const updated = { ...setup, bannedUsers: (setup.bannedUsers ?? []).filter((b) => b.did !== did) };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
+  function handleMarkRead(ids: number[]) {
+    invoke('mark_notifications_read', { ids }).then(() => {
+      setNotifications((prev) =>
+        prev.map((n) => (ids.includes(n.id) ? { ...n, status: 'read' as const, readAt: Date.now() } : n)),
+      );
+      setUnreadCount((c) => Math.max(0, c - ids.length));
+    }).catch(console.error);
+  }
+
+  function handleClearNotifications(ids: number[]) {
+    invoke('clear_notifications', { ids }).then(() => {
+      if (ids.length === 0) {
+        setNotifications([]);
+        setUnreadCount(0);
+      } else {
+        setNotifications((prev) => {
+          const removed = prev.filter((n) => ids.includes(n.id));
+          const unreadRemoved = removed.filter((n) => n.status === 'unread').length;
+          setUnreadCount((c) => Math.max(0, c - unreadRemoved));
+          return prev.filter((n) => !ids.includes(n.id));
+        });
+      }
+    }).catch(console.error);
+  }
+
+  function handleNotificationNavigate(n: NotificationData) {
+    handleMarkRead([n.id]);
+    if (n.kind.type === 'issue') {
+      const issueId = n.kind.id;
+      setIssueReturnView('inbox');
+      setActiveRid(n.repo);
+      if (n.repo === activeRid) {
+        setSelectedIssueInView(issueId);
+        setActiveView('issues');
+      } else {
+        setTimeout(() => {
+          setSelectedIssueInView(issueId);
+          setActiveView('issues');
+        }, 300);
+      }
+    } else if (n.kind.type === 'patch') {
+      const patchId = n.kind.id;
+      setPatchReturnView('inbox');
+      setActiveRid(n.repo);
+      const selectPatch = () => {
+        const raw = rawPatches.find((p) => p.id === patchId);
+        if (raw) setSelectedPatch({ id: raw.id, title: raw.title, author: raw.author, authorDid: raw.authorDid, state: raw.state, head: raw.head });
+        setActiveView('patches');
+      };
+      if (n.repo === activeRid) selectPatch();
+      else setTimeout(selectPatch, 300);
+    } else if (n.kind.type === 'tag') {
+      const tagName = n.kind.name;
+      const refName = `refs/tags/${tagName}`;
+      invoke<string>('resolve_ref', { rid: n.repo, refName })
+        .then((oid) => {
+          setFilesReturnView('inbox');
+          setFilesCommitOid(oid);
+          setFilesInitialPath(null);
+          setFilesRefLabel(tagName);
+          setActiveRid(n.repo);
+          if (n.repo === activeRid) setActiveView('files');
+          else setTimeout(() => setActiveView('files'), 300);
+        })
+        .catch(console.error);
+    }
+  }
+
+function handleGlobalInboxOpen() {
+    setGlobalInboxOpen(true);
+    if (!setup) return;
+    fetchGlobalNotifications(setup.inboxPageSize ?? 50);
+  }
+
+  function handleGlobalMarkRead(ids: number[]) {
+    invoke('mark_notifications_read', { ids }).then(() => {
+      setGlobalNotifications((prev) => prev.map((n) => ids.includes(n.id) ? { ...n, status: 'read' as const, readAt: Date.now() } : n));
+      setGlobalUnreadCount((c) => Math.max(0, c - ids.length));
+      // also update per-repo count if relevant
+      setUnreadCount((c) => Math.max(0, c - ids.filter((id) => notifications.some((n) => n.id === id)).length));
+      setNotifications((prev) => prev.map((n) => ids.includes(n.id) ? { ...n, status: 'read' as const, readAt: Date.now() } : n));
+    }).catch(console.error);
+  }
+
+  function handleGlobalClear(ids: number[]) {
+    invoke('clear_notifications', { ids }).then(() => {
+      if (ids.length === 0) {
+        setGlobalNotifications([]);
+        setGlobalUnreadCount(0);
+        setNotifications([]);
+        setUnreadCount(0);
+      } else {
+        setGlobalNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
+        setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
+        setGlobalUnreadCount((c) => Math.max(0, c - ids.filter((id) => globalNotifications.find((n) => n.id === id)?.status === 'unread').length));
+      }
+    }).catch(console.error);
+  }
+
+  function handleBrowseFile(commitOid: string, filePath: string) {
+    setFilesCommitOid(commitOid);
+    setFilesInitialPath(filePath);
+    setFilesReturnView(activeView);
+    setActiveView('files');
+  }
+
+  function handleViewPatchFile(fileDiffs: FileDiff[], commitOid: string, patchTitle: string, initialPath: string, patchId: string, initialRevisionId: string) {
+    setPatchFilesCtx({ fileDiffs, commitOid, patchTitle, initialPath, patchId, initialRevisionId });
+    setActiveView('patch-files');
+  }
+
+  function handlePatchFilesReturn(finalRevisionId: string) {
+    setPatchRevisionOverride(finalRevisionId);
+    setPatchFilesCtx(null);
+    setActiveView('patches');
+  }
+
+  function handleFilesReturn() {
+    const ret = filesReturnView ?? 'kanban';
+    setFilesReturnView(null);
+    setFilesCommitOid(null);
+    setFilesInitialPath(null);
+    setFilesRefLabel(null);
+    setActiveView(ret);
+  }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      if (settingsOpen) { setSettingsOpen(false); return; }
+      if (selectedIssue) { setSelectedIssue(null); return; }
+      if (activeView === 'issues' && issueReturnView) {
+        setActiveView(issueReturnView);
+        setIssueReturnView(null);
+        return;
+      }
+      if (activeView === 'patches' && patchReturnIssueId) {
+        setSelectedIssueInView(patchReturnIssueId);
+        setPatchReturnIssueId(null);
+        setActiveView('issues');
+        return;
+      }
+      if (activeView === 'patches' && patchReturnView) {
+        const ret = patchReturnView;
+        setPatchReturnView(null);
+        setActiveView(ret);
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [settingsOpen, selectedIssue, activeView, issueReturnView, patchReturnIssueId, patchReturnView]);
+
+  function handleIssueClick(id: string) {
+    setSelectedIssueInView(id);
+    setIssueReturnView('kanban');
+    setActiveView('issues');
+  }
+
+  function handleOpenIssue(prefix: string) {
+    const full = [...issueDetails.keys()].find((k) => k.startsWith(prefix));
+    if (!full) return;
+    setSelectedIssueInView(full);
+    setActiveView('issues');
+  }
+
+  const activeDelegateDids = repoDelegateDids.get(activeRid ?? '') ?? [];
+  const isDelegate = myDid !== null && activeDelegateDids.includes(myDid);
+  function canModify(issueId: string): boolean {
+    if (isDelegate) return true;
+    return myDid !== null && issueDetails.get(issueId)?.authorDid === myDid;
+  }
+
+  const labelSuggestions = useMemo(
+    () => [...new Set([...issueDetails.values()].flatMap((i) => i.labels.map((l) => l.text)))],
+    [issueDetails],
+  );
+
+  const repoCtxValue = useMemo(() => ({
+    rid: activeRid ?? '',
+    myDid,
+    delegateDids: repoDelegateDids.get(activeRid ?? '') ?? [],
+    explorerUrl: setup?.explorerUrl ?? 'https://app.radicle.xyz',
+    seedNode: setup?.seedNode ?? 'seed.radicle.xyz',
+    localRepoPath: activeRid ? (setup?.localRepoPaths?.[activeRid] ?? null) : null,
+    defaultBranch: activeRid ? (repoDefaultBranches.get(activeRid) ?? 'master') : 'master',
+    preferredEditor: setup?.preferredEditor ?? null,
+    columns: columns.map((c) => ({ id: c.id, title: c.title })),
+    columnColors: setup?.columnColors?.[activeRid ?? ''] ?? {},
+    labelSuggestions,
+    bannedUsers: setup?.bannedUsers ?? [],
+  }), [activeRid, myDid, repoDelegateDids, repoDefaultBranches, setup, columns, labelSuggestions]);
+
+  const actionsCtxValue = useMemo(() => ({
+    onRefresh: handleRefresh,
+    onBanUser: handleBanUser,
+    onUnbanUser: handleUnbanUser,
+    onStateChange: handleStateChange,
+    onOpenPatch: (p: PatchRef, issueId: string) => {
+      setPatchReturnIssueId(issueId);
+      setSelectedIssue(null);
+      setSelectedIssueInView(null);
+      setSelectedPatch(p);
+      setPatchRevisionOverride(null);
+      setActiveView('patches');
+    },
+    onSelectIssue: setSelectedIssueInView,
+    onBrowseFile: handleBrowseFile,
+    onViewPatchFile: handleViewPatchFile,
+    onOpenIssue: handleOpenIssue,
+    onCommentsLoaded: handleCommentsLoaded,
+  }), [activeRid, setup, columns, issueDetails, selectedIssue]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className={styles.root} style={{ zoom }} data-theme={theme}>
+      <header className={styles.topbar} data-tauri-drag-region>
+        <div className={styles.logoGroup}>
+          <div className={styles.logo}>
+            <div className={styles.logoDot} />
+            radboard
+          </div>
+          {setup !== null && (
+            <button
+              className={`${styles.inboxBtn} ${globalUnreadCount > 0 ? styles.inboxBtnUnread : ''}`}
+              onClick={handleGlobalInboxOpen}
+              title="Global inbox"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z" />
+              </svg>
+              {globalUnreadCount > 0 && <span className={styles.inboxDot}>{globalUnreadCount > 99 ? '99+' : globalUnreadCount}</span>}
+            </button>
+          )}
+        </div>
+        <WindowControls />
+      </header>
+
+      {!configLoaded ? null : setup === null ? (
+        <WelcomeScreen onSetup={handleSetup} />
+      ) : (
+        <RepoProvider value={repoCtxValue}>
+          <TerminalProvider
+            rid={activeRid}
+            localRepoPath={activeRid ? (setup?.localRepoPaths?.[activeRid] ?? null) : null}
+            isDark={theme === 'dark'}
+          >
+          <ActionsProvider value={actionsCtxValue}>
+          <>
+          <nav className={styles.tabs}>
+            {setup!.rids.map((rid) => (
+              <button
+                key={rid}
+                className={`${styles.tab} ${activeRid === rid ? styles.tabActive : ''}`}
+                onClick={() => { setActiveRid(rid); setSelectedPatch(null); if (activeView === 'patch-files') setActiveView('patches'); }}
+              >
+                {repoNames.get(rid) ?? rid.slice(0, 10)}
+                <span
+                  className={styles.tabClose}
+                  role="button"
+                  aria-label="Remove board"
+                  onClick={(e) => { e.stopPropagation(); setConfirmRemoveRid(rid); }}
+                >✕</span>
+              </button>
+            ))}
+            <button className={styles.tabAdd} onClick={() => setAddRepoOpen(true)} aria-label="Add board">+</button>
+          </nav>
+
+          <Tabs
+            value={activeView}
+            onValueChange={(v) => {
+              setActiveView(v as MainView);
+              if (v !== 'patches') setPatchReturnIssueId(null);
+              if (v !== 'issues') setIssueReturnView(null);
+            }}
+          >
+            <TabsList className={styles.viewSwitcher}>
+              {(['inbox', 'kanban', 'issues', 'patches', 'worktrees', 'files'] as const).map((v) => (
+                <TabsTrigger
+                  key={v}
+                  value={v}
+                  className={v === 'inbox' && unreadCount > 0 && activeView !== 'inbox' ? styles.viewTabUnread : ''}
+                  badge={v === 'inbox' && unreadCount > 0 ? unreadCount : undefined}
+                >
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          <main className={styles.main}>
+            {isRepoLoading && <div className={styles.loadingBar}><div className={styles.loadingBarInner} /></div>}
+            {activeView === 'kanban' && (
+              <KanbanBoard columns={columns} onChange={handleColumnsChange} onIssueMoved={handleIssueMoved} onColumnsReorder={handleColumnsReorder} onIssueClick={handleIssueClick} onNewIssue={() => setNewIssueOpen(true)} canDrag={(issue) => canModify(issue.id)} columnColors={setup.columnColors?.[activeRid!] ?? {}} onColumnColorChange={handleColumnColorChange} onColumnRemove={handleColumnRemove} visibleColumns={setup.visibleColumns ?? columns.length} bannedDids={new Set((setup.bannedUsers ?? []).filter((b) => b.scope !== 'comments').map((b) => b.did))} onBanUser={handleBanUser} delegateDids={activeDelegateDids} myDid={myDid} />
+            )}
+            {activeView === 'issues' && (
+              <IssuesView
+                issueDetails={issueDetails}
+                selectedIssueId={selectedIssueInView}
+                onSelectIssue={setSelectedIssueInView}
+                onReturn={issueReturnView ? () => {
+                  setIssueReturnView(null);
+                  setActiveView(issueReturnView);
+                } : undefined}
+                returnLabel={issueReturnView === 'kanban' ? 'Back to board' : issueReturnView ? `Back to ${issueReturnView}` : undefined}
+              />
+            )}
+            {(activeView === 'patches' || activeView === 'patch-files') && (
+              <div style={{ display: activeView === 'patch-files' ? 'none' : 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                <PatchesView
+                  patches={rawPatches}
+                  selectedPatch={selectedPatch}
+                  onSelectPatch={(p) => { setSelectedPatch(p); setPatchRevisionOverride(null); }}
+                  revisionOverride={patchRevisionOverride}
+                  isActive={activeView === 'patches'}
+                  onReturn={patchReturnIssueId ? () => {
+                    setSelectedIssueInView(patchReturnIssueId);
+                    setPatchReturnIssueId(null);
+                    setActiveView('issues');
+                  } : patchReturnView ? () => {
+                    const ret = patchReturnView;
+                    setPatchReturnView(null);
+                    setActiveView(ret);
+                  } : undefined}
+                  returnLabel={patchReturnIssueId ? `Back to issue ${patchReturnIssueId.slice(0, 7)}` : patchReturnView ? `Back to ${patchReturnView}` : undefined}
+                />
+              </div>
+            )}
+            {activeView === 'patch-files' && patchFilesCtx && activeRid && (
+              <PatchFilesView
+                rid={activeRid}
+                fileDiffs={patchFilesCtx.fileDiffs}
+                commitOid={patchFilesCtx.commitOid}
+                patchTitle={patchFilesCtx.patchTitle}
+                patchId={patchFilesCtx.patchId}
+                initialRevisionId={patchFilesCtx.initialRevisionId}
+                initialPath={patchFilesCtx.initialPath}
+                onReturn={handlePatchFilesReturn}
+              />
+            )}
+            {activeView === 'worktrees' && (
+              <WorktreesView
+                localRepoPath={activeRid ? (setup.localRepoPaths?.[activeRid] ?? null) : null}
+                preferredEditor={setup.preferredEditor ?? null}
+                onFindIssue={(prefix) => {
+                  const id = [...issueDetails.keys()].find((k) => k.startsWith(prefix));
+                  if (!id) return null;
+                  return { id, title: issueDetails.get(id)!.title };
+                }}
+                onOpenIssue={(id) => { setSelectedIssueInView(id); setActiveView('issues'); }}
+                onFindPatches={(prefix, head) => {
+                  const headMatches = rawPatches.filter((p) => p.head === head);
+                  if (headMatches.length > 0) return headMatches.map((p) => ({ id: p.id, title: p.title, state: p.state, head: p.head }));
+                  return rawPatches
+                    .filter((p) => p.title.includes(prefix) || p.description.includes(prefix))
+                    .map((p) => ({ id: p.id, title: p.title, state: p.state, head: p.head }));
+                }}
+                onOpenPatch={(id) => {
+                  const p = rawPatches.find((p) => p.id === id);
+                  if (!p) return;
+                  setSelectedPatch({ id: p.id, title: p.title, author: p.author, authorDid: p.authorDid, state: p.state, head: p.head });
+                  setActiveView('patches');
+                }}
+              />
+            )}
+            {activeView === 'files' && activeRid && (
+              <FilesView
+                rid={activeRid}
+                commitOid={filesCommitOid}
+                initialPath={filesInitialPath}
+                onReturn={filesReturnView ? handleFilesReturn : undefined}
+                returnLabel={filesReturnView ? `Back to ${filesReturnView}` : undefined}
+                refLabel={filesRefLabel ?? undefined}
+                patches={rawPatches}
+                delegateDids={repoDelegateDids.get(activeRid)}
+                defaultBranch={repoDefaultBranches.get(activeRid)}
+              />
+            )}
+            {activeView === 'inbox' && (
+              <InboxView
+                notifications={notifications}
+                onMarkRead={handleMarkRead}
+                onClear={handleClearNotifications}
+                onNavigate={handleNotificationNavigate}
+              />
+            )}
+          </main>
+
+          <IssueDetail
+            issue={selectedIssue}
+            onClose={() => setSelectedIssue(null)}
+            currentColumnId={selectedIssue ? (columns.find((col) => col.issues.some((i) => i.id === selectedIssue.id))?.id ?? 'new') : 'new'}
+          />
+          <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onToggleTheme={toggleTheme} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} canZoomIn={canZoomIn} canZoomOut={canZoomOut} visibleColumns={setup.visibleColumns ?? columns.length} onVisibleColumnsChange={handleVisibleColumnsChange} explorerUrl={setup.explorerUrl ?? 'https://app.radicle.xyz'} onExplorerUrlChange={handleExplorerUrlChange} seedNode={setup.seedNode ?? 'seed.radicle.xyz'} onSeedNodeChange={handleSeedNodeChange} rids={setup.rids} repoNames={repoNames} localRepoPaths={setup.localRepoPaths ?? {}} onLocalPathChange={handleLocalPathChange} preferredEditor={setup.preferredEditor ?? ''} onEditorChange={handleEditorChange} inboxPageSize={setup.inboxPageSize ?? 50} onInboxPageSizeChange={handleInboxPageSizeChange} />
+          <NewIssueModal
+            open={newIssueOpen}
+            rid={activeRid!}
+            labelSuggestions={labelSuggestions}
+            onCreated={() => { setNewIssueOpen(false); handleRefresh(); }}
+            onClose={() => setNewIssueOpen(false)}
+          />
+          <AddRepoModal
+            open={addRepoOpen}
+            existingRids={setup!.rids}
+            onAdd={handleAddRepo}
+            onClose={() => setAddRepoOpen(false)}
+          />
+          <ConfirmDialog
+            open={confirmRemoveRid !== null}
+            title="Remove board"
+            message={`Remove "${repoNames.get(confirmRemoveRid ?? '') ?? confirmRemoveRid}" from your dashboard?`}
+            confirmLabel="Remove"
+            onConfirm={() => handleRemoveRepo(confirmRemoveRid!)}
+            onCancel={() => setConfirmRemoveRid(null)}
+          />
+          <GlobalInboxPanel
+            open={globalInboxOpen}
+            notifications={globalNotifications}
+            onClose={() => setGlobalInboxOpen(false)}
+            onMarkRead={handleGlobalMarkRead}
+            onClear={handleGlobalClear}
+            onNavigate={handleNotificationNavigate}
+          />
+
+          <TerminalKeyboardShortcut />
+          <TerminalPanel />
+
+          <footer className={styles.footer}>
+            <TerminalToggleButton />
+            <button
+              className={styles.footerIconBtn}
+              onClick={() => handleRefresh(selectedIssue?.id)}
+              title="Refresh issues &amp; patches"
+              aria-label="Refresh"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 4v6h-6" />
+                <path d="M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0114.36-3.36L23 10M1 14l5.13 4.36A9 9 0 0020.49 15" />
+              </svg>
+            </button>
+            <button
+              className={styles.footerIconBtn}
+              onClick={() => setSettingsOpen(true)}
+              title="Settings"
+              aria-label="Settings"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+              </svg>
+            </button>
+            <div className={styles.footerSpacer} />
+            <div className={styles.zoomControls}>
+              <button className={styles.zoomBtn} onClick={zoomOut} disabled={!canZoomOut} aria-label="Zoom out">−</button>
+              <button className={styles.zoomLevel} onClick={resetZoom} aria-label="Reset zoom">
+                {Math.round(zoom * 100)}%
+              </button>
+              <button className={styles.zoomBtn} onClick={zoomIn} disabled={!canZoomIn} aria-label="Zoom in">+</button>
+            </div>
+            <div className={styles.footerSpacer} />
+          </footer>
+          </>
+          </ActionsProvider>
+          </TerminalProvider>
+        </RepoProvider>
+      )}
+    </div>
+  );
+}
+
+// ── Terminal helpers ───────────────────────────────────────────────────────────
+
+function TerminalKeyboardShortcut() {
+  const { toggle } = useTerminal();
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === '`' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        toggle();
+      }
+    }
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [toggle]);
+  return null;
+}
+
+function TerminalToggleButton() {
+  const { open, toggle } = useTerminal();
+  return (
+    <button
+      className={`${styles.terminalBtn} ${open ? styles.terminalBtnActive : ''}`}
+      onClick={toggle}
+      title="Toggle terminal (Ctrl+`)"
+    >
+      {'>_'}
+    </button>
+  );
+}

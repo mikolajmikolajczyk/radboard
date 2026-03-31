@@ -1,0 +1,97 @@
+.stateSelector { position: relative; display: inline-flex; }
+
+.statusBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.open         { background: rgba(249, 168, 37, 0.10); color: #f59e0b; }
+.inprogress   { background: rgba(56, 189, 248, 0.10); color: #38bdf8; }
+.closed       { background: rgba(93, 228, 199, 0.08); color: #5de4c7; }
+.stateNew     { background: var(--hover-2); color: var(--text-5); }
+.stateDynamic { background: rgba(99, 115, 210, 0.10); color: #818cf8; }
+
+.stateSelectorTrigger {
+  cursor: pointer;
+  user-select: none;
+  gap: 5px;
+}
+
+.stateSelectorTrigger:hover { filter: brightness(1.25); }
+
+.stateCaret { font-size: 7px; opacity: 0.7; }
+
+.statePicker {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 200;
+  min-width: 150px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-3);
+  border-radius: 7px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.statePickerInput {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-2);
+  color: var(--text-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  outline: none;
+  padding: 8px 10px;
+}
+
+.statePickerInput::placeholder { color: var(--text-6); }
+
+.stateOptions {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  gap: 1px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.stateOption {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-3);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 5px 8px;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+
+.stateOption:hover { background: var(--hover-3); color: var(--text-1); }
+
+.stateOptionCurrent {
+  color: var(--text-1);
+  background: var(--hover-2);
+}
+
+.stateOptionCurrent::after {
+  content: ' ✓';
+  opacity: 0.5;
+}
+
+.stateOptionCreate {
+  color: #818cf8;
+  font-style: italic;
+}
+
+.pickerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}

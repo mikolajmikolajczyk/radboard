@@ -1,0 +1,32 @@
+.chip {
+  font-family: var(--ui-font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-5);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.chip:hover {
+  color: var(--text-3);
+  background: var(--hover-3);
+}
+
+.active {
+  color: var(--ui-accent);
+  background: var(--ui-accent-bg-subtle);
+  border-color: var(--ui-accent-border-subtle);
+}
+
+.count {
+  font-size: 9px;
+  opacity: 0.6;
+}

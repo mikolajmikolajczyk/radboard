@@ -1,0 +1,350 @@
+.contentPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.contentHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-5);
+  flex-shrink: 0;
+}
+
+.breadcrumb {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-4);
+}
+
+.breadcrumbSep {
+  color: var(--text-6);
+}
+
+.breadcrumbFile {
+  color: var(--text-2);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.contentBody {
+  flex: 1;
+  overflow: auto;
+}
+
+.contentBody pre {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  min-height: 100%;
+}
+
+.emptyContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-6);
+  font-size: 13px;
+}
+
+.binaryMessage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-5);
+  font-size: 13px;
+}
+
+.truncatedBanner {
+  padding: 6px 16px;
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.loadingContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-6);
+  font-size: 12px;
+}
+
+/* ── Blame toggle ───────────────────────────────────────────────────────────── */
+
+.blameToggle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-5);
+  background: transparent;
+  color: var(--text-5);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.blameToggle:hover {
+  background: var(--hover-3);
+  color: var(--text-3);
+}
+
+.blameToggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.blameToggleActive {
+  background: rgba(93, 228, 199, 0.1);
+  color: #5de4c7;
+  border-color: rgba(93, 228, 199, 0.3);
+}
+
+.blameToggleActive:hover {
+  background: rgba(93, 228, 199, 0.15);
+}
+
+/* ── Code + blame layout ────────────────────────────────────────────────────── */
+
+.codeWithBlame {
+  display: flex;
+  min-height: 100%;
+}
+
+.codePane {
+  flex: 1;
+  min-width: 0;
+}
+
+.codePane pre {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  min-height: 100%;
+}
+
+.blameGutter {
+  flex-shrink: 0;
+  width: 260px;
+  border-right: 1px solid var(--border-5);
+  background: var(--bg-base);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  /* Match SyntaxHighlighter's default padding */
+  padding-top: 16px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.blameLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 19.2px; /* match SyntaxHighlighter line height at font-size 12 */
+  padding: 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.blameAuthor {
+  color: var(--text-4);
+  width: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.blameDate {
+  color: var(--text-6);
+  flex-shrink: 0;
+  width: 76px;
+}
+
+.blameOid {
+  color: var(--text-6);
+  flex-shrink: 0;
+  opacity: 0.6;
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 0 2px;
+  transition: color 0.12s, opacity 0.12s, background 0.12s;
+}
+
+.blameOid:hover {
+  opacity: 1;
+  color: #5de4c7;
+  background: rgba(93, 228, 199, 0.08);
+}
+
+/* ── History dropdown ────────────────────────────────────────────────────────── */
+
+.historyDropdown {
+  position: relative;
+}
+
+.historyBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-5);
+  background: transparent;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-4);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  max-width: 320px;
+  white-space: nowrap;
+}
+
+.historyBtn:hover { background: var(--hover-3); color: var(--text-2); }
+
+.historyBtnOpen {
+  border-color: var(--text-5);
+  color: var(--text-2);
+}
+
+.historyBtnRevision {
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+}
+
+.historyBtnOid {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.historyBtnSummary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.historyChevron {
+  font-size: 8px;
+  color: var(--text-6);
+  flex-shrink: 0;
+}
+
+.historyPanel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 400px;
+  max-height: 360px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-5);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.historySearchInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border-5);
+  background: transparent;
+  color: var(--text-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.historySearchInput::placeholder {
+  color: var(--text-6);
+}
+
+.historyList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.historyEmpty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-6);
+  font-size: 12px;
+}
+
+.historyEntry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.historyEntry:hover { background: var(--hover-3); }
+
+.historyEntryActive {
+  background: rgba(93, 228, 199, 0.08);
+  color: #5de4c7;
+}
+
+.historyEntryActive:hover {
+  background: rgba(93, 228, 199, 0.12);
+}
+
+.historyEntryOid {
+  flex-shrink: 0;
+  opacity: 0.6;
+  width: 56px;
+}
+
+.historyEntrySummary {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.historyEntryMeta {
+  flex-shrink: 0;
+  color: var(--text-6);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.historyLatestBadge {
+  flex-shrink: 0;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(93, 228, 199, 0.12);
+  color: #5de4c7;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}

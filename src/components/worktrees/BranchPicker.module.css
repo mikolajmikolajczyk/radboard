@@ -1,0 +1,233 @@
+.branchPickerDropdown {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.branchPickerBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border-5);
+  background: transparent;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-5);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.branchPickerBtn:hover { background: var(--hover-3); color: var(--text-3); border-color: var(--border-4); }
+
+.branchPickerBtnOpen {
+  border-color: var(--border-3);
+  color: var(--text-2);
+}
+
+.branchPickerBtnAlt {
+  border-color: rgba(168, 130, 255, 0.4);
+  color: #a882ff;
+}
+
+.branchPickerOid {
+  flex-shrink: 0;
+  opacity: 0.5;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.branchPickerAuthor {
+  flex-shrink: 0;
+  color: var(--text-6);
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.branchPickerSep {
+  flex-shrink: 0;
+  color: var(--text-7);
+  margin: 0 1px;
+}
+
+.branchPickerIcon { flex-shrink: 0; }
+
+.branchPickerLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.branchPickerChevron {
+  font-size: 7px;
+  color: var(--text-7);
+  flex-shrink: 0;
+}
+
+.branchPickerPanel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 260px;
+  max-height: 340px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-5);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.branchSearchInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border-5);
+  background: transparent;
+  color: var(--text-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.branchSearchInput::placeholder { color: var(--text-6); }
+
+.branchList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.branchRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: left;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.branchRow:hover { background: var(--hover-3); }
+
+.branchRowActive {
+  background: rgba(93, 228, 199, 0.08);
+  color: #5de4c7;
+}
+
+.branchRowActive:hover { background: rgba(93, 228, 199, 0.12); }
+
+.branchRowIndented { padding-left: 22px; }
+
+.branchIcon { flex-shrink: 0; font-size: 10px; color: var(--text-6); }
+
+.branchName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.branchOid {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-6);
+  opacity: 0.7;
+}
+
+.branchBadge {
+  flex-shrink: 0;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.branchBadgeCanonical {
+  background: rgba(93, 228, 199, 0.12);
+  color: #5de4c7;
+}
+
+.branchBadgeDelegate {
+  background: rgba(168, 130, 255, 0.12);
+  color: #a882ff;
+}
+
+.branchSep {
+  height: 1px;
+  background: var(--border-5);
+  margin: 4px 4px;
+}
+
+.branchAuthorRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-4);
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.branchAuthorRow:hover { background: var(--hover-3); }
+
+.branchAuthorChevron {
+  font-size: 8px;
+  color: var(--text-7);
+  flex-shrink: 0;
+  width: 10px;
+}
+
+.branchAuthorName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.branchPatchCount {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-6);
+  background: var(--hover-3);
+  padding: 0 5px;
+  border-radius: 3px;
+}
+
+.branchEmpty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-6);
+  font-size: 11px;
+}

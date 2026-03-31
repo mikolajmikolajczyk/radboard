@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=radboard
+Comment=Kanban board for Radicle issues
+Exec=radboard
+Icon=radboard
+Terminal=false
+Type=Application
+Categories=Development;ProjectManagement;
+Keywords=radicle;kanban;issues;patches;
+StartupWMClass=radboard

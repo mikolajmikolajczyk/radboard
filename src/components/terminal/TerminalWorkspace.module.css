@@ -1,0 +1,29 @@
+.workspace {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  min-height: 0;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.newTermBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 6px 16px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 5px;
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.newTermBtn:hover {
+  background: rgba(248, 113, 113, 0.16);
+}

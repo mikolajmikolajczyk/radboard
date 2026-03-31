@@ -1,0 +1,52 @@
+.reactionBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--hover-2);
+  border: 1px solid var(--border-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.reaction:hover {
+  background: var(--border-3);
+  border-color: var(--border-6);
+}
+
+.reactionCount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-4);
+}
+
+.addReactionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px dashed var(--border-3);
+  font-size: 11px;
+  color: var(--text-6);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.addReactionBtn:hover {
+  border-color: var(--border-5);
+  color: var(--text-3);
+  background: var(--hover-2);
+}

@@ -1,0 +1,37 @@
+.splitH {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+}
+
+.splitV {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.dividerH {
+  width: 4px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--border-2);
+  transition: background 0.1s;
+}
+
+.dividerH:hover {
+  background: rgba(248, 113, 113, 0.4);
+}
+
+.dividerV {
+  height: 4px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: var(--border-2);
+  transition: background 0.1s;
+}
+
+.dividerV:hover {
+  background: rgba(248, 113, 113, 0.4);
+}

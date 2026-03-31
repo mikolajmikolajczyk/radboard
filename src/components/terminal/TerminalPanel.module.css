@@ -1,0 +1,33 @@
+.panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-base);
+  border-top: 1px solid var(--border-3);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  transform: translateY(100%);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 120px;
+}
+
+.panelOpen {
+  transform: translateY(0);
+}
+
+.resizeHandle {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  z-index: 1;
+}
+
+.resizeHandle:hover,
+.resizeHandle:active {
+  background: rgba(248, 113, 113, 0.3);
+}

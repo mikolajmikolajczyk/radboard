@@ -1,0 +1,56 @@
+.base {
+  font-family: var(--ui-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-block;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.sm {
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.md {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.open {
+  color: var(--ui-badge-open);
+  background: var(--ui-badge-open-bg);
+  border-color: var(--ui-badge-open-border);
+}
+
+.merged {
+  color: var(--ui-badge-merged);
+  background: var(--ui-badge-merged-bg);
+  border-color: var(--ui-badge-merged-border);
+}
+
+.draft {
+  color: var(--ui-badge-draft);
+  background: var(--ui-badge-draft-bg);
+  border-color: var(--ui-badge-draft-border);
+}
+
+.in_progress {
+  color: var(--ui-badge-progress);
+  background: var(--ui-badge-progress-bg);
+  border-color: var(--ui-badge-progress-border);
+}
+
+.closed {
+  color: var(--ui-badge-closed);
+  background: var(--ui-badge-closed-bg);
+  border-color: var(--ui-badge-closed-border);
+}
+
+.archived {
+  color: var(--ui-badge-archived);
+  background: var(--ui-badge-archived-bg);
+  border-color: var(--ui-badge-archived-border);
+}

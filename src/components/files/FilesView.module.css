@@ -1,0 +1,244 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Ribbon ─────────────────────────────────────────────────────────────────── */
+
+.ribbon {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-5);
+  flex-shrink: 0;
+  background: var(--bg-base);
+}
+
+.ribbonSep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-5);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+.ribbonSpacer { flex: 1; }
+
+.tagLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #f8b84c;
+  background: rgba(248, 184, 76, 0.1);
+  border: 1px solid rgba(248, 184, 76, 0.25);
+  border-radius: 4px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+
+.tagLabelIcon {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.ribbonTab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-5);
+  transition: background 0.12s, color 0.12s;
+}
+
+.ribbonTab:hover { background: var(--hover-3); color: var(--text-3); }
+
+.ribbonTabActive {
+  background: var(--hover-3);
+  color: var(--text-2);
+}
+
+.ribbonTabCount {
+  font-size: 10px;
+  color: var(--text-5);
+  background: var(--hover-4);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.ribbonTabActive .ribbonTabCount {
+  background: rgba(93, 228, 199, 0.15);
+  color: #5de4c7;
+}
+
+/* ── Panels (files mode) ─────────────────────────────────────────────────────── */
+
+.panels {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.treePanel {
+  width: 280px;
+  min-width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-5);
+  overflow-x: hidden;
+}
+
+/* ── Commit list panel ──────────────────────────────────────────────────────── */
+
+.commitListPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.commitListScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+.commitListLoading {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-6);
+  font-size: 12px;
+}
+
+.commitDayHeader {
+  padding: 10px 20px 6px;
+  font-size: 11px;
+  color: var(--text-6);
+  border-bottom: 1px solid var(--border-5);
+  position: sticky;
+  top: 0;
+  background: var(--bg-base);
+  z-index: 1;
+}
+
+.commitRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border-5);
+  transition: background 0.1s;
+}
+
+.commitRow:hover { background: var(--hover-2); }
+
+.commitMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.commitSummary {
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commitMeta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+
+.commitAuthor {
+  color: var(--text-4);
+  font-weight: 500;
+}
+
+.commitVerb {
+  color: var(--text-6);
+}
+
+.commitOidChip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-5);
+  background: var(--hover-3);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.commitTime {
+  color: var(--text-6);
+  font-size: 11px;
+}
+
+.commitBrowseBtn {
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-5);
+  background: transparent;
+  color: var(--text-5);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  opacity: 0;
+}
+
+.commitRow:hover .commitBrowseBtn { opacity: 1; }
+.commitBrowseBtn:hover { background: var(--hover-4); color: var(--text-2); border-color: var(--border-3); }
+
+.loadMoreBtn {
+  display: block;
+  margin: 16px auto;
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 5px;
+  border: 1px solid var(--border-5);
+  background: transparent;
+  color: var(--text-4);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.loadMoreBtn:hover { background: var(--hover-3); color: var(--text-2); }
+.loadMoreBtn:disabled { opacity: 0.5; cursor: default; }
+
+.returnBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-5);
+  background: transparent;
+  color: var(--text-4);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.returnBtn:hover {
+  background: var(--hover-3);
+  color: var(--text-2);
+}

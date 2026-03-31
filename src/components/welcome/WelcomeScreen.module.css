@@ -1,0 +1,477 @@
+.root {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  overflow-y: auto;
+}
+
+/* ── No identity ─────────────────────────────────────────────────────────────── */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 400px;
+  gap: 12px;
+}
+
+.stateIcon {
+  font-size: 28px;
+  color: var(--text-5);
+  margin-bottom: 4px;
+}
+
+.stateTitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.stateBody {
+  font-size: 13px;
+  color: var(--text-5);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.docsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #5de4c7;
+  text-decoration: none;
+  border: 1px solid rgba(93, 228, 199, 0.3);
+  background: rgba(93, 228, 199, 0.07);
+  padding: 7px 14px;
+  border-radius: 7px;
+  transition: background 0.15s;
+}
+
+.docsLink:hover {
+  background: rgba(93, 228, 199, 0.14);
+}
+
+.externalArrow {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* ── Shared header ───────────────────────────────────────────────────────────── */
+
+.pickerHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pickerTitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.pickerBody {
+  font-size: 13px;
+  color: var(--text-5);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.backBtn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-5);
+  padding: 0;
+  margin-bottom: 4px;
+  transition: color 0.15s;
+}
+
+.backBtn:hover {
+  color: var(--text-2);
+}
+
+/* ── Repo picker ─────────────────────────────────────────────────────────────── */
+
+.picker {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-2);
+  border-radius: 7px;
+  margin-top: 4px;
+}
+
+.identityLabel {
+  font-size: 11px;
+  color: var(--text-6);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.identityAlias {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.identityDid {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-6);
+  margin-left: auto;
+}
+
+/* ── Repo list ───────────────────────────────────────────────────────────────── */
+
+.repoList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.repoItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.repoItem:hover {
+  border-color: rgba(93, 228, 199, 0.4);
+  background: var(--hover-1);
+}
+
+.repoItem:hover .repoArrow {
+  color: #5de4c7;
+  transform: translateX(2px);
+}
+
+.repoMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.repoName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.repoDesc {
+  font-size: 11px;
+  color: var(--text-5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repoMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.repoRid {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-6);
+}
+
+.repoBranch {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-7);
+  padding: 1px 6px;
+  border: 1px solid var(--border-3);
+  border-radius: 4px;
+}
+
+.repoDelegates {
+  font-size: 10px;
+  color: var(--text-6);
+}
+
+.repoArrow {
+  color: var(--text-6);
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.emptyRepos {
+  font-size: 13px;
+  color: var(--text-5);
+  text-align: center;
+  padding: 32px 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── No-identity screen ──────────────────────────────────────────────────────── */
+
+.noIdentity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 480px;
+  width: 100%;
+  gap: 16px;
+}
+
+.noIdentity .stateIcon {
+  align-self: center;
+}
+
+.noIdentity .stateTitle {
+  align-self: center;
+}
+
+.niSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.niLabel {
+  font-size: 12px;
+  color: var(--text-4);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.niPathRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.niPath {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-2);
+  border-radius: 5px;
+  padding: 4px 8px;
+  flex: 1;
+  word-break: break-all;
+}
+
+.niHint {
+  font-size: 12px;
+  color: var(--text-6);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.niDivider {
+  width: 100%;
+  height: 1px;
+  background: var(--border-2);
+  flex-shrink: 0;
+}
+
+.niActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ── Command blocks ──────────────────────────────────────────────────────────── */
+
+.cmdBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-2);
+  border-radius: 7px;
+  padding: 10px 12px;
+}
+
+.cmdPre {
+  flex: 1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-2);
+  margin: 0;
+  white-space: pre;
+  line-height: 1.6;
+}
+
+.copyBtn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-5);
+  padding: 2px 7px;
+  transition: color 0.15s, border-color 0.15s;
+  align-self: flex-start;
+  margin-top: 1px;
+}
+
+.copyBtn:hover {
+  color: var(--text-2);
+  border-color: var(--border);
+}
+
+.inlineCode {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-2);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.checkAgainBtn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 5px 12px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.checkAgainBtn:hover {
+  color: var(--text-1);
+  border-color: rgba(93, 228, 199, 0.5);
+  background: rgba(93, 228, 199, 0.06);
+}
+
+/* ── Repo picker: local path confirm ─────────────────────────────────────────── */
+
+.localPathSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.localPathLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.localPathHint {
+  font-size: 12px;
+  color: var(--text-5);
+  line-height: 1.5;
+}
+
+.scanning {
+  color: var(--text-6);
+  font-style: italic;
+}
+
+.pathRow {
+  display: flex;
+  gap: 6px;
+}
+
+.pathInput {
+  flex: 1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-2);
+  border-radius: 5px;
+  color: var(--text-2);
+  padding: 5px 8px;
+  outline: none;
+}
+
+.pathInput:focus { border-color: rgba(93, 228, 199, 0.4); }
+
+.browseBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: var(--hover-2);
+  border: 1px solid var(--border-3);
+  border-radius: 5px;
+  color: var(--text-4);
+  cursor: pointer;
+  padding: 5px 10px;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+.browseBtn:hover { background: var(--hover-3); color: var(--text-2); }
+
+.browseError {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #f87171;
+  white-space: pre-line;
+}
+
+.confirmFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Repo picker: create section ─────────────────────────────────────────────── */
+
+.createSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.createBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.createBlockLabel {
+  font-size: 12px;
+  color: var(--text-5);
+}

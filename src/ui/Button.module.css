@@ -1,0 +1,65 @@
+.base {
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Variants */
+
+.default {
+  font-family: var(--ui-font-sans);
+  background: transparent;
+  border-color: var(--border-5);
+  color: var(--text-3);
+}
+
+.default:hover:not(:disabled) {
+  background: var(--hover-4);
+  color: var(--text-1);
+  border-color: var(--border-8);
+}
+
+.primary {
+  font-family: var(--ui-font-mono);
+  background: var(--ui-accent-bg);
+  border-color: var(--ui-accent-border);
+  color: var(--ui-accent);
+}
+
+.primary:hover:not(:disabled) {
+  background: rgba(93, 228, 199, 0.25);
+}
+
+.danger {
+  font-family: var(--ui-font-sans);
+  background: var(--ui-danger-bg);
+  border-color: var(--ui-danger-border);
+  color: var(--ui-danger);
+}
+
+.danger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.20);
+}
+
+/* Sizes */
+
+.sm {
+  font-size: 10px;
+  padding: 4px 10px;
+}
+
+.md {
+  font-size: 12px;
+  padding: 7px 14px;
+}

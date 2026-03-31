@@ -1,0 +1,14 @@
+.resizeHandle {
+  position: absolute;
+  right: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  z-index: 1;
+  border-radius: 0 10px 10px 0;
+}
+
+.resizeHandle:hover {
+  background: rgba(93, 228, 199, 0.15);
+}

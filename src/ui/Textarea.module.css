@@ -1,0 +1,25 @@
+.textarea {
+  background: var(--bg-base);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  width: 100%;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+
+.textarea:focus {
+  border-color: var(--ui-accent-focus);
+}
+
+.textarea::placeholder {
+  color: var(--text-6);
+}
+
+.textarea:disabled {
+  opacity: 0.5;
+}

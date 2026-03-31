@@ -1,0 +1,57 @@
+/* ── UI component design tokens ──────────────────────────────────────────────── */
+/* All color vars resolve at use-time against App.css theme variables           */
+
+:root {
+  /* Accent (teal) */
+  --ui-accent:              #5de4c7;
+  --ui-accent-bg:           rgba(93, 228, 199, 0.15);
+  --ui-accent-bg-subtle:    rgba(93, 228, 199, 0.08);
+  --ui-accent-border:       rgba(93, 228, 199, 0.35);
+  --ui-accent-border-subtle: rgba(93, 228, 199, 0.20);
+  --ui-accent-focus:        rgba(93, 228, 199, 0.50);
+
+  /* Danger (red) */
+  --ui-danger:              #f87171;
+  --ui-danger-bg:           rgba(248, 113, 113, 0.12);
+  --ui-danger-border:       rgba(248, 113, 113, 0.30);
+
+  /* Badge variants — same values in both themes */
+  /* open (amber) */
+  --ui-badge-open:          #f59e0b;
+  --ui-badge-open-bg:       rgba(249, 168, 37, 0.10);
+  --ui-badge-open-border:   rgba(249, 168, 37, 0.25);
+
+  /* merged (purple) */
+  --ui-badge-merged:        #a78bfa;
+  --ui-badge-merged-bg:     rgba(139, 92, 246, 0.12);
+  --ui-badge-merged-border: rgba(139, 92, 246, 0.25);
+
+  /* draft (muted) */
+  --ui-badge-draft:         var(--text-5);
+  --ui-badge-draft-bg:      var(--hover-2);
+  --ui-badge-draft-border:  var(--border-2);
+
+  /* in-progress (sky) */
+  --ui-badge-progress:        #38bdf8;
+  --ui-badge-progress-bg:     rgba(56, 189, 248, 0.10);
+  --ui-badge-progress-border: rgba(56, 189, 248, 0.25);
+
+  /* closed (teal) */
+  --ui-badge-closed:        #5de4c7;
+  --ui-badge-closed-bg:     rgba(93, 228, 199, 0.08);
+  --ui-badge-closed-border: rgba(93, 228, 199, 0.20);
+
+  /* archived (red) */
+  --ui-badge-archived:        #f87171;
+  --ui-badge-archived-bg:     rgba(248, 113, 113, 0.10);
+  --ui-badge-archived-border: rgba(248, 113, 113, 0.22);
+
+  /* Avatar */
+  --ui-avatar-bg:     rgba(99, 115, 210, 0.12);
+  --ui-avatar-border: rgba(99, 115, 210, 0.20);
+  --ui-avatar-color:  #818cf8;
+
+  /* Fonts */
+  --ui-font-mono: 'JetBrains Mono', monospace;
+  --ui-font-sans: 'IBM Plex Sans', sans-serif;
+}

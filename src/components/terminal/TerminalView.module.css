@@ -1,0 +1,43 @@
+.terminalView {
+  flex: 1;
+  overflow: hidden;
+  padding: 4px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminalView.active {
+  outline: 1px solid rgba(248, 113, 113, 0.25);
+  outline-offset: -1px;
+}
+
+.terminalView :global(.xterm) {
+  height: 100%;
+}
+
+.terminalView :global(.xterm-viewport) {
+  overflow-y: auto;
+}
+
+.exitOverlay {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+}
+
+.restartBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 4px;
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.restartBtn:hover {
+  background: rgba(248, 113, 113, 0.2);
+}

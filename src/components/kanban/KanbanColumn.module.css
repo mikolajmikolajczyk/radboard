@@ -1,0 +1,145 @@
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Column header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 7px;
+  margin-bottom: 2px;
+  gap: 6px;
+}
+
+.dragHandle {
+  cursor: grab;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-5);
+  padding: 0 2px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.dragHandle:hover {
+  color: var(--text-2);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.addBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  color: var(--text-5);
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.addBtn:hover {
+  color: var(--text-1);
+  background: var(--hover-2);
+}
+
+.badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+/* Drop zone */
+.dropZone {
+  flex: 1;
+  min-height: 80px;
+  border: 1px dashed var(--border-2);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dragOver {
+  background: var(--hover-1);
+  border-style: solid;
+}
+
+.placeholder {
+  height: 56px;
+  border: 1.5px dashed var(--border-5);
+  border-radius: 7px;
+  background: var(--hover-1);
+  flex-shrink: 0;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 60px;
+  color: var(--text-6);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Column colour themes ─────────────────────────────────── */
+
+.colNew .header     { background: var(--col-new-header-bg); }
+.colNew .title      { color: var(--col-new-text); }
+.colNew .badge      { background: var(--col-new-badge-bg); color: var(--col-new-text); }
+.colNew .dropZone   { border-color: var(--col-new-border); }
+
+.colOpen .header    { background: var(--col-open-header-bg); }
+.colOpen .title     { color: var(--col-open-text); }
+.colOpen .badge     { background: var(--col-open-badge-bg); color: var(--col-open-text); }
+.colOpen .dropZone  { border-color: var(--col-open-border); }
+
+.colClosed .header    { background: var(--col-closed-header-bg); }
+.colClosed .title     { color: var(--col-closed-text); }
+.colClosed .badge     { background: var(--col-closed-badge-bg); color: var(--col-closed-text); }
+.colClosed .dropZone  { border-color: var(--col-closed-border); }
+
+/* Dynamic columns use a neutral purple-ish accent */
+.colDynamic .header   { background: var(--col-prog-header-bg, var(--hover-2)); }
+.colDynamic .title    { color: var(--col-prog-text, var(--text-2)); }
+.colDynamic .badge    { background: var(--col-prog-badge-bg, var(--hover-3)); color: var(--col-prog-text, var(--text-2)); }
+.colDynamic .dropZone { border-color: var(--col-prog-border, var(--border-3)); }
+
+/* Column drag states */
+.colDraggingSource {
+  opacity: 0.4;
+}
+
+.colInsertBefore {
+  border-left: 2px solid var(--accent, #7c6aff);
+  margin-left: -2px;
+  padding-left: 2px;
+}
