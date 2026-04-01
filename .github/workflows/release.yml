@@ -40,12 +40,20 @@ jobs:
       - name: Upload to VPS
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          APPIMAGE="src-tauri/target/release/bundle/appimage/radboard_${VERSION}_amd64.AppImage"
+          APPIMAGE="target/release/bundle/appimage/radboard_${VERSION}_amd64.AppImage"
+          DEB="target/release/bundle/deb/radboard_${VERSION}_amd64.deb"
+          RPM="target/release/bundle/rpm/radboard-${VERSION}-1.x86_64.rpm"
           echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/vps_key && chmod 600 /tmp/vps_key
           mkdir -p ~/.ssh && ssh-keyscan 89.47.51.21 >> ~/.ssh/known_hosts
-          scp -i /tmp/vps_key "$APPIMAGE" mikolaj@89.47.51.21:/tmp/radboard-x86_64.AppImage
+          scp -i /tmp/vps_key "$APPIMAGE" "$DEB" "$RPM" mikolaj@89.47.51.21:/tmp/
           ssh -i /tmp/vps_key mikolaj@89.47.51.21 \
-            "sudo release-upload radboard ${GITHUB_REF_NAME} /tmp/radboard-x86_64.AppImage && rm /tmp/radboard-x86_64.AppImage"
+            "sudo release-upload radboard ${GITHUB_REF_NAME} \
+              /tmp/radboard_${VERSION}_amd64.AppImage \
+              /tmp/radboard_${VERSION}_amd64.deb \
+              /tmp/radboard-${VERSION}-1.x86_64.rpm && \
+             rm /tmp/radboard_${VERSION}_amd64.AppImage \
+                /tmp/radboard_${VERSION}_amd64.deb \
+                /tmp/radboard-${VERSION}-1.x86_64.rpm"
 
   macos:
     runs-on: macos-14
@@ -76,7 +84,7 @@ jobs:
       - name: Upload to VPS
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          DMG="src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/radboard_${VERSION}_aarch64.dmg"
+          DMG="target/aarch64-apple-darwin/release/bundle/dmg/radboard_${VERSION}_aarch64.dmg"
           echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/vps_key && chmod 600 /tmp/vps_key
           mkdir -p ~/.ssh && ssh-keyscan 89.47.51.21 >> ~/.ssh/known_hosts
           scp -i /tmp/vps_key "$DMG" mikolaj@89.47.51.21:/tmp/radboard-aarch64.dmg
