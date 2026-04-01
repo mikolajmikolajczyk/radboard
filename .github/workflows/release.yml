@@ -91,7 +91,7 @@ jobs:
       - name: Upload to VPS
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          DMG="src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/radboard_${VERSION}_aarch64.dmg"
+          DMG="target/aarch64-apple-darwin/release/bundle/dmg/radboard_${VERSION}_aarch64.dmg"
           echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/vps_key && chmod 600 /tmp/vps_key
           mkdir -p ~/.ssh && ssh-keyscan 89.47.51.21 >> ~/.ssh/known_hosts
           scp -i /tmp/vps_key "$DMG" mikolaj@89.47.51.21:/tmp/radboard-aarch64.dmg
