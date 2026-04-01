@@ -39,6 +39,8 @@ release:
 	sed -i 's/"version": "$(CURRENT_VERSION)"/"version": "$(VERSION)"/' src-tauri/tauri.conf.json
 	sed -i 's/^version = "$(CURRENT_VERSION)"/version = "$(VERSION)"/' src-tauri/Cargo.toml
 	git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+	git-cliff --tag "v$(VERSION)" -o CHANGELOG.md
+	git add CHANGELOG.md
 	git commit -m "release: v$(VERSION)"
 	git tag "v$(VERSION)"
 	git push origin master --tags

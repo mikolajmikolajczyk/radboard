@@ -134,6 +134,7 @@
           buildInputs = tauriDeps ++ rustDeps ++ nodeDeps ++ [
             pkgs.pkg-config
             pkgs.xdg-utils
+            pkgs.git-cliff
           ];
 
           # Required for Tauri to find system libraries
