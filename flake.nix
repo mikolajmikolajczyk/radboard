@@ -52,7 +52,8 @@
           nodePackages.pnpm
         ];
 
-        pnpmDeps = pkgs.pnpm_10.fetchDeps {
+        pnpmDeps = pkgs.fetchPnpmDeps {
+          pnpmPackage = pkgs.pnpm_10;
           pname = "radboard-frontend";
           version = "0.1.0";
           src = ./.;
@@ -68,7 +69,7 @@
           nativeBuildInputs = with pkgs; [
             nodejs_22
             pnpm_10
-            pnpm_10.configHook
+            pnpmConfigHook
           ];
 
           inherit pnpmDeps;

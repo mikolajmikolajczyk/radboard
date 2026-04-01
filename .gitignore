@@ -39,3 +39,4 @@ plans/
 *.njsproj
 *.sln
 *.sw?
+/result
