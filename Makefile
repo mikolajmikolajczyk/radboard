@@ -1,4 +1,4 @@
-.PHONY: build release flatpak upload
+.PHONY: build docker-image release mirror flatpak upload
 
 # Read current version from package.json
 CURRENT_VERSION := $(shell grep '"version"' package.json | head -1 | sed 's/.*"\([0-9]*\.[0-9]*\.[0-9]*\)".*/\1/')
@@ -11,8 +11,28 @@ ifndef VERSION
   VERSION := $(MAJOR).$(MINOR).$(shell echo $$(($(PATCH) + 1)))
 endif
 
-build:
-	pnpm tauri build
+# Docker build configuration
+BUILDER_IMAGE  := radboard-builder
+DOCKER_TARGET  := $(CURDIR)/.docker-target
+CARGO_REGISTRY := $(HOME)/.cargo/registry
+PNPM_STORE     := $(HOME)/.local/share/pnpm/store
+
+# AppImage output path (inside .docker-target/)
+APPIMAGE := $(DOCKER_TARGET)/release/bundle/appimage/radboard_$(VERSION)_amd64.AppImage
+
+docker-image:
+	docker build -f Dockerfile.build -t $(BUILDER_IMAGE) .
+
+build: docker-image
+	mkdir -p $(DOCKER_TARGET) $(CARGO_REGISTRY) $(PNPM_STORE)
+	docker run --rm \
+	  -v $(CURDIR):/src \
+	  -v $(DOCKER_TARGET):/src/src-tauri/target \
+	  -v $(CARGO_REGISTRY):/root/.cargo/registry \
+	  -v $(PNPM_STORE):/root/.local/share/pnpm/store \
+	  -w /src \
+	  $(BUILDER_IMAGE) \
+	  bash -c 'CI=true pnpm install --frozen-lockfile && pnpm tauri build'
 
 release:
 	@echo "Bumping version: $(CURRENT_VERSION) → $(VERSION)"
@@ -23,17 +43,20 @@ release:
 	git commit -m "release: v$(VERSION)"
 	git tag "v$(VERSION)"
 	@echo "Tagged v$(VERSION). Building..."
-	pnpm tauri build
+	$(MAKE) build VERSION=$(VERSION)
 	@echo "Release v$(VERSION) complete."
+
+# Mirror main branch + tags to GitHub (for CI)
+mirror:
+	git push github main --tags
 
 flatpak: build
 	flatpak-builder --force-clean build-dir org.mikolajczyk.radboard.yml
 	@echo "Flatpak built in build-dir/"
 
 # Upload AppImage to dl.mikolajczyk.org
-VPS      := mikolaj@89.47.51.21
-SSH_KEY  := ~/.ssh/id_ed25519_yubikey
-APPIMAGE := src-tauri/target/release/bundle/appimage/radboard_$(VERSION)_amd64.AppImage
+VPS     := mikolaj@89.47.51.21
+SSH_KEY := ~/.ssh/id_ed25519_yubikey
 
 upload:
 	@test -f "$(APPIMAGE)" || (echo "AppImage not found: $(APPIMAGE)" && echo "Run 'make release' or 'make build' first." && exit 1)

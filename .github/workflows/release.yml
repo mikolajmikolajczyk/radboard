@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev pkg-config file xdg-utils
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm tauri build
+
+      - name: Upload to VPS
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          APPIMAGE="src-tauri/target/release/bundle/appimage/radboard_${VERSION}_amd64.AppImage"
+          echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/vps_key && chmod 600 /tmp/vps_key
+          mkdir -p ~/.ssh && ssh-keyscan 89.47.51.21 >> ~/.ssh/known_hosts
+          scp -i /tmp/vps_key "$APPIMAGE" mikolaj@89.47.51.21:/tmp/radboard-x86_64.AppImage
+          ssh -i /tmp/vps_key mikolaj@89.47.51.21 \
+            "sudo release-upload radboard ${GITHUB_REF_NAME} /tmp/radboard-x86_64.AppImage && rm /tmp/radboard-x86_64.AppImage"
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm tauri build --target aarch64-apple-darwin
+
+      - name: Upload to VPS
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          DMG="src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/radboard_${VERSION}_aarch64.dmg"
+          echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/vps_key && chmod 600 /tmp/vps_key
+          mkdir -p ~/.ssh && ssh-keyscan 89.47.51.21 >> ~/.ssh/known_hosts
+          scp -i /tmp/vps_key "$DMG" mikolaj@89.47.51.21:/tmp/radboard-aarch64.dmg
+          ssh -i /tmp/vps_key mikolaj@89.47.51.21 \
+            "sudo release-upload radboard ${GITHUB_REF_NAME} /tmp/radboard-aarch64.dmg && rm /tmp/radboard-aarch64.dmg"

@@ -15,6 +15,12 @@ dist-ssr
 # Rust/Cargo workspace build artifacts
 target/
 
+# Docker build output
+.docker-target/
+
+# pnpm store (if local)
+.pnpm-store/
+
 # Nix/direnv
 .direnv/
 

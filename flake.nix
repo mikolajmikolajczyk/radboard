@@ -52,18 +52,12 @@
           nodePackages.pnpm
         ];
 
-        # Extra tools needed for bundling (AppImage needs xdg-open)
-        bundleDeps = with pkgs; [
-          xdg-utils
-        ];
-
-        # --- Package build ---
-
-        pnpmDeps = pkgs.pnpm_9.fetchDeps {
+        pnpmDeps = pkgs.pnpm_10.fetchDeps {
           pname = "radboard-frontend";
           version = "0.1.0";
           src = ./.;
-          hash = ""; # nix build will tell you the correct hash on first run
+          fetcherVersion = 1;
+          hash = "sha256-Ytjj4y59P5hyM+Gg9E84KqQwwxFoPjBa16MY5ACwOFE=";
         };
 
         frontend = pkgs.stdenv.mkDerivation {
@@ -73,8 +67,8 @@
 
           nativeBuildInputs = with pkgs; [
             nodejs_22
-            pnpm_9
-            pnpm_9.configHook
+            pnpm_10
+            pnpm_10.configHook
           ];
 
           inherit pnpmDeps;
@@ -114,7 +108,7 @@
             pkg-config
             wrapGAppsHook3
             nodejs_22
-            pnpm_9
+            pnpm_10
           ];
 
           buildInputs = tauriDeps;
@@ -124,19 +118,22 @@
             install -Dm644 ${./src-tauri/icons/icon.png} $out/share/icons/hicolor/256x256/apps/radboard.png
           '';
 
-          # wrapGAppsHook3 handles GSettings, GTK, WebKitGTK wrapping
           preFixup = ''
             gappsWrapperArgs+=(
               --set WEBKIT_DISABLE_COMPOSITING_MODE 1
             )
           '';
         };
+
       in
       {
         packages.default = radboard;
 
         devShells.default = pkgs.mkShell {
-          buildInputs = tauriDeps ++ rustDeps ++ nodeDeps ++ bundleDeps ++ [ pkgs.pkg-config ];
+          buildInputs = tauriDeps ++ rustDeps ++ nodeDeps ++ [
+            pkgs.pkg-config
+            pkgs.xdg-utils
+          ];
 
           # Required for Tauri to find system libraries
           PKG_CONFIG_PATH = with pkgs; lib.makeSearchPathOutput "dev" "lib/pkgconfig" tauriDeps;
