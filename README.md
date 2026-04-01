@@ -2,7 +2,7 @@
 
 A Kanban board for [Radicle](https://radicle.xyz) — manage your issues and patches visually, right from your desktop.
 
-![radboard screenshot](https://dl.mikolajczyk.org/radboard/latest/screenshot.png)
+![radboard screenshot](packaging/screenshot.png)
 
 ## Features
 
