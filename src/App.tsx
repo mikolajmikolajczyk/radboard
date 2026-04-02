@@ -592,7 +592,7 @@ export default function App() {
       setColumns(cols);
       setIssueDetails(details);
       if (keepSelectedId) {
-        setSelectedIssue(details.get(keepSelectedId) ?? null);
+        setSelectedIssue((prev: IssueDetailType | null) => prev !== null ? (details.get(keepSelectedId) ?? null) : null);
       }
     }).catch(console.error);
   }
