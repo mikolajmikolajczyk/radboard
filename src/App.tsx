@@ -4,7 +4,6 @@ import { useZoom } from './hooks/useZoom';
 import { useTheme } from './hooks/useTheme';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import KanbanBoard from './components/kanban/KanbanBoard';
-import IssueDetail from './components/issues/IssueDetail';
 import IssuesView from './components/issues/IssuesView';
 import PatchesView from './components/patches/PatchesView';
 import WorktreesView from './components/worktrees/WorktreesView';
@@ -200,7 +199,6 @@ export default function App() {
   const [confirmRemoveRid, setConfirmRemoveRid] = useState<string | null>(null);
   const [columns, setColumns] = useState<KanbanColumnData[]>([]);
   const [issueDetails, setIssueDetails] = useState<Map<string, IssueDetailType>>(new Map());
-  const [selectedIssue, setSelectedIssue] = useState<IssueDetailType | null>(null);
   const [rawPatches, setRawPatches] = useState<RawPatchData[]>([]);
   const [selectedPatch, setSelectedPatch] = useState<PatchRef | null>(null);
   const [activeView, setActiveView] = useState<MainView>('kanban');
@@ -483,8 +481,6 @@ export default function App() {
     };
     const columnOrder = setup.columnOrder?.[rid] ?? [];
     const bannedUsers = setup.bannedUsers ?? [];
-    const keepSelectedId = selectedIssue?.id;
-
     invoke('label_issue', { rid, issueId, labels: newLabels })
       .then(() => Promise.all([
         invoke<RawIssueData[]>('list_issues', { rid }),
@@ -495,9 +491,6 @@ export default function App() {
         const [cols, details] = issuesToColumns(issues, rid, updatedBoardState, columnOrder, bannedUsers, patches);
         setColumns(cols);
         setIssueDetails(details);
-        if (keepSelectedId) {
-          setSelectedIssue((prev) => prev?.id === keepSelectedId ? (details.get(keepSelectedId) ?? null) : prev);
-        }
       })
       .catch(console.error);
   }
@@ -579,7 +572,7 @@ export default function App() {
     invoke('save_config', { config: updated }).catch(console.error);
   }
 
-  function handleRefresh(keepSelectedId?: string) {
+  function handleRefresh() {
     if (!activeRid || !setup) return;
     Promise.all([
       invoke<RawIssueData[]>('list_issues', { rid: activeRid }),
@@ -591,9 +584,6 @@ export default function App() {
       const [cols, details] = issuesToColumns(issues, activeRid, boardState, columnOrder, setup.bannedUsers, patches);
       setColumns(cols);
       setIssueDetails(details);
-      if (keepSelectedId) {
-        setSelectedIssue((prev: IssueDetailType | null) => prev !== null ? (details.get(keepSelectedId) ?? null) : null);
-      }
     }).catch(console.error);
   }
 
@@ -642,7 +632,6 @@ export default function App() {
         const [cols, details] = issuesToColumns(issues, activeRid, boardState, columnOrder, updatedSetup.bannedUsers ?? [], patches);
         setColumns(cols);
         setIssueDetails(details);
-        setSelectedIssue((prev) => prev?.id === issueId ? (details.get(issueId) ?? null) : prev);
       })
       .catch(console.error);
   }
@@ -793,7 +782,6 @@ function handleGlobalInboxOpen() {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
       if (settingsOpen) { setSettingsOpen(false); return; }
-      if (selectedIssue) { setSelectedIssue(null); return; }
       if (activeView === 'issues' && issueReturnView) {
         setActiveView(issueReturnView);
         setIssueReturnView(null);
@@ -813,7 +801,7 @@ function handleGlobalInboxOpen() {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [settingsOpen, selectedIssue, activeView, issueReturnView, patchReturnIssueId, patchReturnView]);
+  }, [settingsOpen, activeView, issueReturnView, patchReturnIssueId, patchReturnView]);
 
   function handleIssueClick(id: string) {
     setSelectedIssueInView(id);
@@ -862,7 +850,6 @@ function handleGlobalInboxOpen() {
     onStateChange: handleStateChange,
     onOpenPatch: (p: PatchRef, issueId: string) => {
       setPatchReturnIssueId(issueId);
-      setSelectedIssue(null);
       setSelectedIssueInView(null);
       setSelectedPatch(p);
       setPatchRevisionOverride(null);
@@ -873,7 +860,7 @@ function handleGlobalInboxOpen() {
     onViewPatchFile: handleViewPatchFile,
     onOpenIssue: handleOpenIssue,
     onCommentsLoaded: handleCommentsLoaded,
-  }), [activeRid, setup, columns, issueDetails, selectedIssue]); // eslint-disable-line react-hooks/exhaustive-deps
+  }), [activeRid, setup, columns, issueDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className={styles.root} style={{ zoom }} data-theme={theme}>
@@ -1050,11 +1037,6 @@ function handleGlobalInboxOpen() {
             )}
           </main>
 
-          <IssueDetail
-            issue={selectedIssue}
-            onClose={() => setSelectedIssue(null)}
-            currentColumnId={selectedIssue ? (columns.find((col) => col.issues.some((i) => i.id === selectedIssue.id))?.id ?? 'new') : 'new'}
-          />
           <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onToggleTheme={toggleTheme} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} canZoomIn={canZoomIn} canZoomOut={canZoomOut} visibleColumns={setup.visibleColumns ?? columns.length} onVisibleColumnsChange={handleVisibleColumnsChange} explorerUrl={setup.explorerUrl ?? 'https://app.radicle.xyz'} onExplorerUrlChange={handleExplorerUrlChange} seedNode={setup.seedNode ?? 'seed.radicle.xyz'} onSeedNodeChange={handleSeedNodeChange} rids={setup.rids} repoNames={repoNames} localRepoPaths={setup.localRepoPaths ?? {}} onLocalPathChange={handleLocalPathChange} preferredEditor={setup.preferredEditor ?? ''} onEditorChange={handleEditorChange} inboxPageSize={setup.inboxPageSize ?? 50} onInboxPageSizeChange={handleInboxPageSizeChange} />
           <NewIssueModal
             open={newIssueOpen}
@@ -1093,7 +1075,7 @@ function handleGlobalInboxOpen() {
             <TerminalToggleButton />
             <button
               className={styles.footerIconBtn}
-              onClick={() => handleRefresh(selectedIssue?.id)}
+              onClick={() => handleRefresh()}
               title="Refresh issues &amp; patches"
               aria-label="Refresh"
             >

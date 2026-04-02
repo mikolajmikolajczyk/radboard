@@ -108,7 +108,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
   }
 
   function refresh() {
-    if (issue) actionsOnRefresh(issue.id);
+    actionsOnRefresh();
   }
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
         body: commentBody.trim(),
       });
       setCommentBody('');
-      actionsOnRefresh(issue.id);
+      actionsOnRefresh();
     } catch (e) {
       console.error(e);
     } finally {
@@ -153,7 +153,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
         emoji,
         active: true,
       });
-      actionsOnRefresh(issue.id);
+      actionsOnRefresh();
     } catch (e) {
       console.error(e);
     }
@@ -181,7 +181,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
         description: editDesc,
       });
       setEditing(false);
-      actionsOnRefresh(issue.id);
+      actionsOnRefresh();
     } catch (e) {
       console.error(e);
     } finally {
@@ -455,7 +455,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                         onChange={async (newLabels) => {
                           try {
                             await invoke('label_issue', { rid: issue.rid, issueId: issue.id, labels: newLabels });
-                            actionsOnRefresh(issue.id);
+                            actionsOnRefresh();
                           } catch (e) {
                             console.error(e);
                           }
@@ -596,7 +596,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
           onSuccess={async () => {
             setPatchModal(null);
             await loadWorktrees();
-            if (issue) actionsOnRefresh(issue.id);
+            if (issue) actionsOnRefresh();
           }}
           preferredEditor={preferredEditor}
           onClose={() => setPatchModal(null)}
@@ -607,7 +607,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
           open={true}
           patch={patchDiffModal.patch}
           issueId={issue?.id ?? ''}
-          onPatchStateChange={() => actionsOnRefresh(issue?.id ?? '')}
+          onPatchStateChange={() => actionsOnRefresh()}
           onClose={() => setPatchDiffModal(null)}
         />
       )}
