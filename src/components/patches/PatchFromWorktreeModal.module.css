@@ -259,3 +259,33 @@
   color: var(--text-1);
   padding: 7px 10px;
 }
+
+/* -- Update mode sections -- */
+
+.commitsSection {
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--border-2);
+  flex-shrink: 0;
+}
+
+.unstagedSection {
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+
+.patchMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 0 12px;
+  border-bottom: 0.5px solid var(--border-2);
+}
+
+.sectionLabelSmall {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-6);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}

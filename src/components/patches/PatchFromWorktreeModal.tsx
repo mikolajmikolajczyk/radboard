@@ -1,9 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { FileStatus } from '../../types/radboard';
+import type { FileStatus, PatchCommitEntry } from '../../types/radboard';
 import { FileDiffBox, parseDiff } from './DiffView';
 import type { FileDiff } from './DiffView';
 import { Modal, Button, useResizableDivider } from '../../ui';
+import { useRepo } from '../../contexts/RepoContext';
+import CommitCard, { enrichCommit, type EnrichedCommit } from './CommitCard';
+import UnstagedSection from './UnstagedSection';
+import {
+  type ConventionalType,
+  formatConventional,
+} from './conventionalCommit';
 import styles from './PatchFromWorktreeModal.module.css';
 
 interface Props {
@@ -26,23 +33,31 @@ export default function PatchFromWorktreeModal({
   issueTitle,
   mode,
   patchId,
-  patchTitle,
   preferredEditor,
   onSuccess,
   onClose,
 }: Props) {
+  const { defaultBranch = 'master' } = useRepo();
+
+  // -- State --
   const [files, setFiles] = useState<FileStatus[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [fileDiffs, setFileDiffs] = useState<FileDiff[]>([]);
   const [loadingDiff, setLoadingDiff] = useState(false);
-  const [commitMessage, setCommitMessage] = useState('');
-  const [patchTitleInput, setPatchTitleInput] = useState('');
-  const [patchDesc, setPatchDesc] = useState('');
-  const [amend, setAmend] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const diffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [commits, setCommits] = useState<EnrichedCommit[]>([]);
+  const [loadingCommits, setLoadingCommits] = useState(false);
+  const [selectedCommitOid, setSelectedCommitOid] = useState<string | null>(null);
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [committedFiles, setCommittedFiles] = useState<Set<string>>(new Set());
+  const [operating, setOperating] = useState(false);
+
+  // Create-mode only: patch title & description
+  const [patchTitleInput, setPatchTitleInput] = useState('');
+  const [patchDesc, setPatchDesc] = useState('');
 
   const { width: modalWidth, dividerProps: modalResizeProps } = useResizableDivider({
     initial: Math.min(1000, Math.round(window.innerWidth * 0.92)),
@@ -52,19 +67,51 @@ export default function PatchFromWorktreeModal({
   });
 
   const { width: formColWidth, dividerProps: colResizeProps } = useResizableDivider({
-    initial: 320,
-    min: 220,
+    initial: 360,
+    min: 260,
     max: 600,
   });
 
+  const enrichAll = useCallback(
+    (raw: PatchCommitEntry[]) => raw.map((c, i) => enrichCommit(c, i, raw.length)),
+    [],
+  );
+
+  const recentTypes: ConventionalType[] = (() => {
+    const seen = new Set<ConventionalType>();
+    for (const c of commits) {
+      if (c.type) seen.add(c.type);
+    }
+    return Array.from(seen);
+  })();
+
+  // -- Selection helpers: selecting a commit clears file selection and vice versa --
+  function selectCommit(oid: string) {
+    setSelectedCommitOid(oid);
+    setSelectedFilePath(null);
+  }
+
+  function selectFile(path: string) {
+    setSelectedFilePath((prev) => (prev === path ? null : path));
+    setSelectedCommitOid(null);
+  }
+
+  // -- Load on open --
   useEffect(() => {
     if (!open) return;
-    setPatchTitleInput(issueTitle);
-    setCommitMessage(`[${issueId.slice(0, 7)}] ${issueTitle}`);
-    setPatchDesc('');
     setError(null);
     setFileDiffs([]);
-    setAmend(false);
+    setCommittedFiles(new Set());
+    setCommits([]);
+    setSelectedCommitOid(null);
+    setSelectedFilePath(null);
+
+    if (mode === 'create') {
+      setPatchTitleInput(issueTitle);
+      setPatchDesc('');
+    }
+
+    // Load unstaged files
     setLoadingFiles(true);
     invoke<FileStatus[]>('get_worktree_status', { worktreePath })
       .then((f) => {
@@ -73,27 +120,52 @@ export default function PatchFromWorktreeModal({
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoadingFiles(false));
+
+    // Load existing commits (update mode)
+    if (mode === 'update') {
+      setLoadingCommits(true);
+      invoke<PatchCommitEntry[]>('get_patch_commits', {
+        worktreePath,
+        baseBranch: defaultBranch,
+      })
+        .then((raw) => {
+          const enriched = raw.map((c, i) => enrichCommit(c, i, raw.length));
+          setCommits(enriched);
+          if (enriched.length > 0) {
+            setSelectedCommitOid(enriched[enriched.length - 1].oid);
+          }
+        })
+        .catch((e) => setError(String(e)))
+        .finally(() => setLoadingCommits(false));
+    }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // -- Diff: show selected commit's diff OR selected file's diff --
   useEffect(() => {
     if (!open) return;
-    if (diffTimer.current) clearTimeout(diffTimer.current);
-    diffTimer.current = setTimeout(() => {
-      if (selected.size === 0) {
-        setFileDiffs([]);
-        return;
-      }
+
+    if (selectedCommitOid) {
       setLoadingDiff(true);
-      invoke<string>('get_worktree_diff', { worktreePath, files: Array.from(selected) })
+      invoke<string>('get_commit_diff', { worktreePath, commitOid: selectedCommitOid })
         .then((raw) => setFileDiffs(parseDiff(raw)))
         .catch(() => setFileDiffs([]))
         .finally(() => setLoadingDiff(false));
-    }, 150);
-    return () => {
-      if (diffTimer.current) clearTimeout(diffTimer.current);
-    };
-  }, [selected, open]); // eslint-disable-line react-hooks/exhaustive-deps
+      return;
+    }
 
+    if (selectedFilePath) {
+      setLoadingDiff(true);
+      invoke<string>('get_worktree_diff', { worktreePath, files: [selectedFilePath] })
+        .then((raw) => setFileDiffs(parseDiff(raw)))
+        .catch(() => setFileDiffs([]))
+        .finally(() => setLoadingDiff(false));
+      return;
+    }
+
+    setFileDiffs([]);
+  }, [selectedCommitOid, selectedFilePath, open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // -- Handlers --
   function toggleFile(path: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -102,42 +174,173 @@ export default function PatchFromWorktreeModal({
     });
   }
 
-  async function handleToggleAmend(enable: boolean) {
-    setAmend(enable);
-    if (enable) {
-      try {
-        const msg = await invoke<string>('get_head_commit_message', { worktreePath });
-        if (msg) setCommitMessage(msg);
-      } catch {
-        // ignore — user can type message manually
+  async function handleTypeChange(oid: string, newType: ConventionalType) {
+    const commit = commits.find((c) => c.oid === oid);
+    if (!commit) return;
+    const newMsg = formatConventional(newType, commit.scope, commit.description);
+    await handleRewriteMessage(oid, newMsg);
+  }
+
+  async function handleRewriteMessage(oid: string, newMessage: string) {
+    setOperating(true);
+    setError(null);
+    try {
+      const updated = await invoke<PatchCommitEntry[]>('rewrite_commit_message', {
+        worktreePath,
+        commitOid: oid,
+        newMessage,
+        baseBranch: defaultBranch,
+      });
+      const enriched = enrichAll(updated);
+      setCommits(enriched);
+      const idx = commits.findIndex((c) => c.oid === oid);
+      if (idx >= 0 && idx < enriched.length) {
+        setSelectedCommitOid(enriched[idx].oid);
       }
-    } else {
-      setCommitMessage(`[${issueId.slice(0, 7)}] ${issueTitle}`);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setOperating(false);
     }
   }
 
+  async function handleMergeUp(oid: string) {
+    const idx = commits.findIndex((c) => c.oid === oid);
+    if (idx <= 0) return;
+    const target = commits[idx - 1];
+    const source = commits[idx];
+    const combinedMsg = `${target.fullMessage}\n\n${source.fullMessage}`;
+
+    setOperating(true);
+    setError(null);
+    try {
+      const updated = await invoke<PatchCommitEntry[]>('squash_commits', {
+        worktreePath,
+        targetOid: target.oid,
+        sourceOid: source.oid,
+        newMessage: combinedMsg,
+        baseBranch: defaultBranch,
+      });
+      const enriched = enrichAll(updated);
+      setCommits(enriched);
+      if (idx - 1 < enriched.length) {
+        setSelectedCommitOid(enriched[idx - 1].oid);
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setOperating(false);
+    }
+  }
+
+  async function handleUncommit() {
+    setOperating(true);
+    setError(null);
+    try {
+      await invoke('uncommit_head', { worktreePath });
+      const [newCommits, newFiles] = await Promise.all([
+        invoke<PatchCommitEntry[]>('get_patch_commits', {
+          worktreePath,
+          baseBranch: defaultBranch,
+        }),
+        invoke<FileStatus[]>('get_worktree_status', { worktreePath }),
+      ]);
+      const enriched = enrichAll(newCommits);
+      setCommits(enriched);
+      setFiles(newFiles);
+      setSelected(new Set(newFiles.map((f) => f.path)));
+      setCommittedFiles(new Set());
+      if (enriched.length > 0) {
+        setSelectedCommitOid(enriched[enriched.length - 1].oid);
+      } else {
+        setSelectedCommitOid(null);
+      }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setOperating(false);
+    }
+  }
+
+  async function handleCommitFiles(
+    filePaths: string[],
+    type: ConventionalType,
+    message: string,
+  ) {
+    const fullMsg = formatConventional(type, null, message);
+    setOperating(true);
+    setError(null);
+    try {
+      const newEntry = await invoke<PatchCommitEntry>('commit_staged_files', {
+        worktreePath,
+        files: filePaths,
+        commitMessage: fullMsg,
+      });
+      const allRaw = [
+        ...commits.map((c) => ({
+          oid: c.oid,
+          shortOid: c.shortOid,
+          summary: c.fullMessage,
+          timestamp: c.timestamp,
+        })),
+        newEntry,
+      ];
+      setCommits(enrichAll(allRaw));
+      setSelectedCommitOid(newEntry.oid);
+      setSelectedFilePath(null);
+
+      // Refresh unstaged files
+      const newFiles = await invoke<FileStatus[]>('get_worktree_status', { worktreePath });
+      setFiles(newFiles);
+      setSelected(new Set(newFiles.map((f) => f.path)));
+      setCommittedFiles(new Set());
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setOperating(false);
+    }
+  }
+
+  async function handleDiscardFile(path: string, status: string) {
+    setError(null);
+    try {
+      await invoke('discard_worktree_file', { worktreePath, filePath: path, status });
+      // Refresh unstaged files
+      const newFiles = await invoke<FileStatus[]>('get_worktree_status', { worktreePath });
+      setFiles(newFiles);
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(path);
+        return next;
+      });
+      if (selectedFilePath === path) setSelectedFilePath(null);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  // -- Submit --
   async function handleSubmit() {
-    if (mode === 'create' && selected.size === 0) return;
-    if (!commitMessage.trim() || submitting) return;
-    if (mode === 'create' && !patchTitleInput.trim()) return;
+    if (submitting) return;
+    if (commits.length === 0) return;
+
     setSubmitting(true);
     setError(null);
     try {
       if (mode === 'create') {
-        await invoke('commit_and_create_patch', {
+        if (!patchTitleInput.trim()) return;
+        await invoke('push_create_patch', {
           worktreePath,
-          files: Array.from(selected),
-          commitMessage: commitMessage.trim(),
           patchTitle: `[${issueId.slice(0, 7)}] ${patchTitleInput.trim()}`,
           patchDescription: patchDesc.trim(),
         });
       } else {
         await invoke('commit_and_update_patch', {
           worktreePath,
-          files: Array.from(selected),
-          commitMessage: commitMessage.trim(),
+          files: [],
+          commitMessage: '',
           patchId: patchId!,
-          amend,
+          amend: false,
         });
       }
       onSuccess();
@@ -146,6 +349,15 @@ export default function PatchFromWorktreeModal({
       setSubmitting(false);
     }
   }
+
+  // -- Derived --
+  const selectedShort = commits.find((c) => c.oid === selectedCommitOid)?.shortOid;
+  const diffLabel = selectedCommitOid && selectedShort
+    ? `Changes — ${selectedShort}`
+    : selectedFilePath
+      ? `Changes — ${selectedFilePath}`
+      : 'Changes';
+  const busy = operating || submitting;
 
   return (
     <Modal
@@ -165,64 +377,11 @@ export default function PatchFromWorktreeModal({
           className={styles.columns}
           style={{ gridTemplateColumns: `${formColWidth}px 6px 1fr` }}
         >
-          {/* Left column: form */}
+          {/* Left column */}
           <div className={styles.formCol}>
-            <div className={styles.section}>
-              <div className={styles.sectionLabel}>
-                Changed files
-                <button
-                  className={styles.selectAll}
-                  onClick={() =>
-                    setSelected(
-                      selected.size === files.length
-                        ? new Set()
-                        : new Set(files.map((f) => f.path))
-                    )
-                  }
-                >
-                  {selected.size === files.length ? 'deselect all' : 'select all'}
-                </button>
-              </div>
-              {loadingFiles ? (
-                <span className={styles.hint}>loading…</span>
-              ) : files.length === 0 ? (
-                <span className={styles.hint}>
-                  {mode === 'update'
-                    ? 'No new changes — will push existing commits'
-                    : 'No changes in worktree'}
-                </span>
-              ) : (
-                <div className={styles.fileList}>
-                  {files.map((f) => (
-                    <label key={f.path} className={styles.fileRow}>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(f.path)}
-                        onChange={() => toggleFile(f.path)}
-                        disabled={submitting}
-                      />
-                      <code className={styles.fileStatus}>{f.status.trim() || '??'}</code>
-                      <span className={styles.filePath}>{f.path}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <label className={styles.label}>
-              Commit message
-              <input
-                className={styles.input}
-                value={commitMessage}
-                onChange={(e) => setCommitMessage(e.target.value)}
-                placeholder="describe the change…"
-                disabled={submitting}
-                autoFocus
-              />
-            </label>
-
+            {/* Patch title/desc — create mode, at the top */}
             {mode === 'create' && (
-              <>
+              <div className={styles.patchMeta}>
                 <label className={styles.label}>
                   Patch title
                   <div className={styles.titleRow}>
@@ -230,14 +389,10 @@ export default function PatchFromWorktreeModal({
                     <input
                       className={styles.titleInput}
                       value={patchTitleInput}
-                      onChange={(e) => {
-                        setPatchTitleInput(e.target.value);
-                        if (!commitMessage.trim()) {
-                          setCommitMessage(`[${issueId.slice(0, 7)}] ${e.target.value}`);
-                        }
-                      }}
+                      onChange={(e) => setPatchTitleInput(e.target.value)}
                       placeholder="patch title"
                       disabled={submitting}
+                      autoFocus
                     />
                   </div>
                 </label>
@@ -248,29 +403,65 @@ export default function PatchFromWorktreeModal({
                     value={patchDesc}
                     onChange={(e) => setPatchDesc(e.target.value)}
                     placeholder="describe the patch…"
-                    rows={3}
+                    rows={2}
                     disabled={submitting}
                   />
                 </label>
-              </>
-            )}
-
-            {mode === 'update' && (
-              <div className={styles.amendRow}>
-                <label className={styles.amendToggle}>
-                  <input
-                    type="checkbox"
-                    checked={amend}
-                    onChange={(e) => handleToggleAmend(e.target.checked)}
-                    disabled={submitting}
-                  />
-                  Amend last commit
-                </label>
-                {patchTitle && (
-                  <span className={styles.updatePatchTitle}>{patchTitle}</span>
-                )}
               </div>
             )}
+
+            {/* Commits section */}
+            <div className={styles.commitsSection}>
+              <div className={styles.sectionLabelSmall}>Commits</div>
+              {loadingCommits ? (
+                <span className={styles.hint}>loading…</span>
+              ) : commits.length === 0 ? (
+                <span className={styles.hint}>
+                  {mode === 'create'
+                    ? 'Stage files below to create your first commit'
+                    : 'No commits on this patch yet'}
+                </span>
+              ) : (
+                commits.map((c) => (
+                  <CommitCard
+                    key={c.oid}
+                    commit={c}
+                    selected={c.oid === selectedCommitOid}
+                    recentTypes={recentTypes}
+                    disabled={busy}
+                    onSelect={() => selectCommit(c.oid)}
+                    onTypeChange={(t) => handleTypeChange(c.oid, t)}
+                    onMessageChange={(msg) => handleRewriteMessage(c.oid, msg)}
+                    onMergeUp={() => handleMergeUp(c.oid)}
+                    onUncommit={handleUncommit}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Unstaged changes */}
+            <div className={styles.unstagedSection}>
+              {loadingFiles ? (
+                <span className={styles.hint}>loading…</span>
+              ) : files.length === 0 ? (
+                <span className={styles.hint}>No unstaged changes</span>
+              ) : (
+                <UnstagedSection
+                  files={files}
+                  selected={selected}
+                  committedFiles={committedFiles}
+                  disabled={busy}
+                  recentTypes={recentTypes}
+                  selectedFilePath={selectedFilePath}
+                  onToggleFile={toggleFile}
+                  onSelectAll={() => setSelected(new Set(files.map((f) => f.path)))}
+                  onDeselectAll={() => setSelected(new Set())}
+                  onSelectFile={selectFile}
+                  onCommitFiles={handleCommitFiles}
+                  onDiscardFile={handleDiscardFile}
+                />
+              )}
+            </div>
 
             {error && <div className={styles.error}>{error}</div>}
           </div>
@@ -281,12 +472,12 @@ export default function PatchFromWorktreeModal({
           {/* Right column: diff */}
           <div className={styles.diffCol}>
             <div className={styles.sectionLabel}>
-              Changes
+              {diffLabel}
               {loadingDiff && <span className={styles.hint}> loading…</span>}
             </div>
             <div className={styles.diffScroll}>
               {fileDiffs.length === 0 && !loadingDiff ? (
-                <span className={styles.hint}>No tracked changes to display</span>
+                <span className={styles.hint}>Select a commit or file to view changes</span>
               ) : (
                 fileDiffs.map((fd) => (
                   <FileDiffBox
@@ -308,24 +499,15 @@ export default function PatchFromWorktreeModal({
           variant="primary"
           onClick={handleSubmit}
           disabled={
-            (mode === 'create' && selected.size === 0) ||
-            !commitMessage.trim() ||
+            commits.length === 0 ||
             (mode === 'create' && !patchTitleInput.trim()) ||
-            submitting ||
-            loadingFiles
+            busy ||
+            loadingCommits
           }
         >
           {submitting
-            ? mode === 'create'
-              ? 'Creating…'
-              : amend
-                ? 'Amending…'
-                : 'Updating…'
-            : mode === 'create'
-              ? 'Create patch'
-              : amend
-                ? 'Amend & update patch'
-                : 'Update patch'}
+            ? mode === 'create' ? 'Creating…' : 'Updating…'
+            : mode === 'create' ? 'Create patch' : 'Update patch'}
         </Button>
       </Modal.Footer>
     </Modal>

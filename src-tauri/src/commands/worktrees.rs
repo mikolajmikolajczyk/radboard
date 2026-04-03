@@ -1,4 +1,4 @@
-use crate::types::{FileStatus, WorktreeInfo};
+use crate::types::{FileStatus, PatchCommitEntry, WorktreeInfo};
 
 #[tauri::command]
 pub fn find_local_repo(rid: String) -> Result<Option<String>, String> {
@@ -211,7 +211,7 @@ pub fn get_worktree_diff(worktree_path: String, files: Vec<String>) -> Result<St
 #[tauri::command]
 pub fn get_worktree_status(worktree_path: String) -> Result<Vec<FileStatus>, String> {
     let output = std::process::Command::new("git")
-        .args(["status", "--porcelain"])
+        .args(["status", "--porcelain", "--untracked-files=all"])
         .current_dir(&worktree_path)
         .output()
         .map_err(|e| format!("git error: {e}"))?;
@@ -372,5 +372,395 @@ pub fn open_in_editor(editor: String, path: String) -> Result<(), String> {
         .arg(&path)
         .spawn()
         .map_err(|e| format!("failed to launch '{}': {}", editor, e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn push_create_patch(
+    worktree_path: String,
+    patch_title: String,
+    patch_description: String,
+) -> Result<(), String> {
+    let dir = &worktree_path;
+    let tmp_dir = std::env::temp_dir();
+
+    let msg_file = tmp_dir.join("radboard-patch-msg.txt");
+    let content = if patch_description.trim().is_empty() {
+        format!("{}\n", patch_title)
+    } else {
+        format!("{}\n\n{}\n", patch_title, patch_description)
+    };
+    std::fs::write(&msg_file, &content).map_err(|e| format!("write temp msg: {e}"))?;
+
+    let editor_script = tmp_dir.join("radboard-editor.sh");
+    std::fs::write(
+        &editor_script,
+        format!("#!/bin/sh\ncp '{}' \"$1\"\n", msg_file.display()),
+    )
+    .map_err(|e| format!("write editor script: {e}"))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&editor_script, std::fs::Permissions::from_mode(0o755))
+            .map_err(|e| format!("chmod editor script: {e}"))?;
+    }
+
+    let push = std::process::Command::new("git")
+        .args(["push", "rad", "HEAD:refs/patches"])
+        .env("GIT_EDITOR", &editor_script)
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git push failed: {e}"))?;
+    if !push.status.success() {
+        return Err(String::from_utf8_lossy(&push.stderr).into_owned());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn discard_worktree_file(worktree_path: String, file_path: String, status: String) -> Result<(), String> {
+    let dir = &worktree_path;
+    let s = status.trim();
+
+    if s == "??" {
+        // Untracked file — delete from disk
+        let full = std::path::Path::new(dir).join(&file_path);
+        std::fs::remove_file(&full).map_err(|e| format!("delete failed: {e}"))?;
+    } else {
+        // Tracked file — restore to HEAD version
+        let out = std::process::Command::new("git")
+            .args(["checkout", "HEAD", "--", &file_path])
+            .current_dir(dir)
+            .output()
+            .map_err(|e| format!("git checkout failed: {e}"))?;
+        if !out.status.success() {
+            return Err(String::from_utf8_lossy(&out.stderr).into_owned());
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Patch commit management commands
+// ---------------------------------------------------------------------------
+
+fn parse_commit_log(worktree_path: &str, range: &str) -> Result<Vec<PatchCommitEntry>, String> {
+    let out = std::process::Command::new("git")
+        .args(["log", "--format=%H%x00%h%x00%s%x00%at", "--reverse", range])
+        .current_dir(worktree_path)
+        .output()
+        .map_err(|e| format!("git log failed: {e}"))?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).into_owned());
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let entries = text
+        .lines()
+        .filter(|l| !l.is_empty())
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.splitn(4, '\0').collect();
+            if parts.len() < 4 {
+                return None;
+            }
+            Some(PatchCommitEntry {
+                oid: parts[0].to_string(),
+                short_oid: parts[1].to_string(),
+                summary: parts[2].to_string(),
+                timestamp: parts[3].parse().unwrap_or(0),
+            })
+        })
+        .collect();
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn get_patch_commits(
+    worktree_path: String,
+    base_branch: String,
+) -> Result<Vec<PatchCommitEntry>, String> {
+    let range = format!("{base_branch}..HEAD");
+    parse_commit_log(&worktree_path, &range)
+}
+
+#[tauri::command]
+pub fn get_commit_diff(
+    worktree_path: String,
+    commit_oid: String,
+) -> Result<String, String> {
+    // Check if the commit has a parent
+    let check = std::process::Command::new("git")
+        .args(["rev-parse", "--verify", &format!("{commit_oid}^")])
+        .current_dir(&worktree_path)
+        .output()
+        .map_err(|e| format!("git rev-parse failed: {e}"))?;
+
+    let out = if check.status.success() {
+        // Has parent — normal diff
+        std::process::Command::new("git")
+            .args(["diff", &format!("{commit_oid}~1..{commit_oid}")])
+            .current_dir(&worktree_path)
+            .output()
+            .map_err(|e| format!("git diff failed: {e}"))?
+    } else {
+        // Root commit — diff against empty tree
+        std::process::Command::new("git")
+            .args(["diff", "--root", &commit_oid])
+            .current_dir(&worktree_path)
+            .output()
+            .map_err(|e| format!("git diff failed: {e}"))?
+    };
+    if !out.status.success() {
+        // git diff --root with a non-root may fail; try show instead
+        let show = std::process::Command::new("git")
+            .args(["show", "--format=", &commit_oid])
+            .current_dir(&worktree_path)
+            .output()
+            .map_err(|e| format!("git show failed: {e}"))?;
+        return Ok(String::from_utf8_lossy(&show.stdout).into_owned());
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+#[tauri::command]
+pub fn commit_staged_files(
+    worktree_path: String,
+    files: Vec<String>,
+    commit_message: String,
+) -> Result<PatchCommitEntry, String> {
+    let dir = &worktree_path;
+
+    // git add -- <files>
+    let add = std::process::Command::new("git")
+        .arg("add")
+        .arg("--")
+        .args(&files)
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git add failed: {e}"))?;
+    if !add.status.success() {
+        return Err(String::from_utf8_lossy(&add.stderr).into_owned());
+    }
+
+    // git commit
+    let commit = std::process::Command::new("git")
+        .args(["commit", "-m", &commit_message])
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git commit failed: {e}"))?;
+    if !commit.status.success() {
+        return Err(String::from_utf8_lossy(&commit.stderr).into_owned());
+    }
+
+    // Read back the new HEAD commit info
+    let out = std::process::Command::new("git")
+        .args(["log", "-1", "--format=%H%x00%h%x00%s%x00%at"])
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git log failed: {e}"))?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let parts: Vec<&str> = text.trim().splitn(4, '\0').collect();
+    if parts.len() < 4 {
+        return Err("failed to parse new commit".into());
+    }
+    Ok(PatchCommitEntry {
+        oid: parts[0].to_string(),
+        short_oid: parts[1].to_string(),
+        summary: parts[2].to_string(),
+        timestamp: parts[3].parse().unwrap_or(0),
+    })
+}
+
+#[tauri::command]
+pub fn uncommit_head(worktree_path: String) -> Result<(), String> {
+    let out = std::process::Command::new("git")
+        .args(["reset", "HEAD~1", "--mixed"])
+        .current_dir(&worktree_path)
+        .output()
+        .map_err(|e| format!("git reset failed: {e}"))?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).into_owned());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn rewrite_commit_message(
+    worktree_path: String,
+    commit_oid: String,
+    new_message: String,
+    base_branch: String,
+) -> Result<Vec<PatchCommitEntry>, String> {
+    let dir = &worktree_path;
+
+    // Check if the commit is HEAD
+    let head_out = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git rev-parse failed: {e}"))?;
+    let head_oid = String::from_utf8_lossy(&head_out.stdout).trim().to_string();
+    let is_head = head_oid == commit_oid;
+
+    if is_head {
+        let out = std::process::Command::new("git")
+            .args(["commit", "--amend", "--allow-empty", "-m", &new_message])
+            .current_dir(dir)
+            .output()
+            .map_err(|e| format!("git commit --amend failed: {e}"))?;
+        if !out.status.success() {
+            return Err(String::from_utf8_lossy(&out.stderr).into_owned());
+        }
+    } else {
+        run_scripted_rebase(dir, &commit_oid, &new_message, "reword", &base_branch)?;
+    }
+
+    let range = format!("{base_branch}..HEAD");
+    parse_commit_log(dir, &range)
+}
+
+#[tauri::command]
+pub fn squash_commits(
+    worktree_path: String,
+    target_oid: String,
+    source_oid: String,
+    new_message: String,
+    base_branch: String,
+) -> Result<Vec<PatchCommitEntry>, String> {
+    let dir = &worktree_path;
+    let tmp_dir = std::env::temp_dir();
+
+    // Write the sequence editor script: changes source's "pick" to "squash"
+    let short_source = &source_oid[..7.min(source_oid.len())];
+    let seq_script = tmp_dir.join("radboard-seq-editor.sh");
+    std::fs::write(
+        &seq_script,
+        format!(
+            "#!/bin/sh\nsed -i 's/^pick {short_source}/squash {short_source}/' \"$1\"\n"
+        ),
+    )
+    .map_err(|e| format!("write seq editor script: {e}"))?;
+
+    // Write the editor script for the squash message
+    let msg_file = tmp_dir.join("radboard-squash-msg.txt");
+    std::fs::write(&msg_file, &new_message)
+        .map_err(|e| format!("write squash msg: {e}"))?;
+
+    let editor_script = tmp_dir.join("radboard-editor.sh");
+    std::fs::write(
+        &editor_script,
+        format!("#!/bin/sh\ncp '{}' \"$1\"\n", msg_file.display()),
+    )
+    .map_err(|e| format!("write editor script: {e}"))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o755);
+        std::fs::set_permissions(&seq_script, perms.clone())
+            .map_err(|e| format!("chmod seq script: {e}"))?;
+        std::fs::set_permissions(&editor_script, perms)
+            .map_err(|e| format!("chmod editor script: {e}"))?;
+    }
+
+    let out = std::process::Command::new("git")
+        .args(["rebase", "-i", &format!("{target_oid}~1")])
+        .env("GIT_SEQUENCE_EDITOR", &seq_script)
+        .env("GIT_EDITOR", &editor_script)
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git rebase failed: {e}"))?;
+
+    if !out.status.success() {
+        // Abort the failed rebase to restore the original state
+        let _ = std::process::Command::new("git")
+            .args(["rebase", "--abort"])
+            .current_dir(dir)
+            .output();
+        return Err(format!(
+            "Squash failed (rebase conflict?): {}",
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+
+    let range = format!("{base_branch}..HEAD");
+    parse_commit_log(dir, &range)
+}
+
+/// Helper: run a scripted interactive rebase to reword a single commit.
+fn run_scripted_rebase(
+    dir: &str,
+    commit_oid: &str,
+    new_message: &str,
+    action: &str, // "reword"
+    base_branch: &str,
+) -> Result<(), String> {
+    let tmp_dir = std::env::temp_dir();
+    let short = &commit_oid[..7.min(commit_oid.len())];
+
+    // Sequence editor: pick → reword for the target commit
+    let seq_script = tmp_dir.join("radboard-seq-editor.sh");
+    std::fs::write(
+        &seq_script,
+        format!("#!/bin/sh\nsed -i 's/^pick {short}/{action} {short}/' \"$1\"\n"),
+    )
+    .map_err(|e| format!("write seq script: {e}"))?;
+
+    // Editor: writes new message
+    let msg_file = tmp_dir.join("radboard-reword-msg.txt");
+    std::fs::write(&msg_file, new_message).map_err(|e| format!("write msg: {e}"))?;
+
+    let editor_script = tmp_dir.join("radboard-editor.sh");
+    std::fs::write(
+        &editor_script,
+        format!("#!/bin/sh\ncp '{}' \"$1\"\n", msg_file.display()),
+    )
+    .map_err(|e| format!("write editor script: {e}"))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o755);
+        std::fs::set_permissions(&seq_script, perms.clone())
+            .map_err(|e| format!("chmod: {e}"))?;
+        std::fs::set_permissions(&editor_script, perms)
+            .map_err(|e| format!("chmod: {e}"))?;
+    }
+
+    // Find the parent to use as rebase base. If the commit is the first in the
+    // patch range, we need to use base_branch as the rebase onto target.
+    let parent_check = std::process::Command::new("git")
+        .args(["rev-parse", "--verify", &format!("{commit_oid}^")])
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("rev-parse parent: {e}"))?;
+
+    let rebase_onto = if parent_check.status.success() {
+        format!("{commit_oid}~1")
+    } else {
+        // Root commit in the patch range — use base_branch
+        base_branch.to_string()
+    };
+
+    let out = std::process::Command::new("git")
+        .args(["rebase", "-i", &rebase_onto])
+        .env("GIT_SEQUENCE_EDITOR", &seq_script)
+        .env("GIT_EDITOR", &editor_script)
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git rebase failed: {e}"))?;
+
+    if !out.status.success() {
+        let _ = std::process::Command::new("git")
+            .args(["rebase", "--abort"])
+            .current_dir(dir)
+            .output();
+        return Err(format!(
+            "Rewrite failed (conflict?): {}",
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+
     Ok(())
 }

@@ -1,0 +1,85 @@
+.wrap { position: relative; display: inline-flex; }
+
+.badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  border: 0.5px solid transparent;
+  transition: filter 0.12s;
+}
+
+.badge:hover { filter: brightness(1.2); }
+.badge.disabled { cursor: default; opacity: 0.6; }
+.badge.disabled:hover { filter: none; }
+
+/* Type colors — from mockup */
+.feat     { background: rgba(62, 207, 142, 0.12); color: #3ecf8e; border-color: rgba(62, 207, 142, 0.3); }
+.fix      { background: rgba(224, 112, 112, 0.12); color: #e07070; border-color: rgba(224, 112, 112, 0.3); }
+.refactor { background: rgba(136, 136, 204, 0.12); color: #8888cc; border-color: rgba(136, 136, 204, 0.3); }
+.chore    { background: var(--hover-1); color: var(--text-6); border-color: var(--border-3); }
+.perf     { background: rgba(212, 160, 74, 0.12); color: #d4a04a; border-color: rgba(212, 160, 74, 0.3); }
+.docs     { background: rgba(74, 168, 212, 0.12); color: #4aa8d4; border-color: rgba(74, 168, 212, 0.3); }
+.test     { background: rgba(138, 196, 74, 0.12); color: #8ac44a; border-color: rgba(138, 196, 74, 0.3); }
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  min-width: 140px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-3);
+  border-radius: 5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  padding: 4px 0;
+}
+
+.sectionHint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-6);
+  padding: 4px 12px 2px;
+}
+
+.separator {
+  border-top: 0.5px solid var(--border-2);
+  margin: 3px 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  color: var(--text-3);
+  transition: background 0.1s;
+}
+
+.item:hover { background: var(--hover-3); }
+
+.itemBadge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.itemDesc {
+  font-size: 10px;
+  color: var(--text-6);
+}

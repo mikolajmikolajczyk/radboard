@@ -146,6 +146,13 @@ export interface BlobContentData {
   isTruncated: boolean;
 }
 
+export interface PatchCommitEntry {
+  oid: string;
+  shortOid: string;
+  summary: string;
+  timestamp: number; // epoch seconds
+}
+
 export interface CommitEntry {
   oid: string;
   summary: string;

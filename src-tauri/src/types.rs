@@ -259,3 +259,12 @@ pub struct FileStatus {
     pub path: String,
     pub status: String, // raw 2-char porcelain code, e.g. "M ", " M", "??", "A "
 }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchCommitEntry {
+    pub oid: String,
+    pub short_oid: String,
+    pub summary: String,
+    pub timestamp: u64,
+}
