@@ -1,4 +1,14 @@
 # Changelog
+## v0.3.0 — 2026-04-08
+
+### Bug Fixes
+
+- Use cache while reading/writing COBs
+
+### Features
+
+- Priority zones in the Open column
+
 ## v0.2.0 — 2026-04-08
 
 ### Bug Fixes
