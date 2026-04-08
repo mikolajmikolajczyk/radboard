@@ -124,7 +124,7 @@ export default function KanbanColumn({
                   transition={{ layout: { duration: draggingId ? 0 : 0.2 } }}
                   onPointerDown={
                     canDrag == null || canDrag(item.issue)
-                      ? (e) => onPointerDown(e, item.issue)
+                      ? (e: React.PointerEvent) => onPointerDown(e, item.issue)
                       : undefined
                   }
                 >

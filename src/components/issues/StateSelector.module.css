@@ -10,6 +10,7 @@
 .open         { background: rgba(249, 168, 37, 0.10); color: #f59e0b; }
 .inprogress   { background: rgba(56, 189, 248, 0.10); color: #38bdf8; }
 .closed       { background: rgba(93, 228, 199, 0.08); color: #5de4c7; }
+.solved       { background: rgba(134, 239, 172, 0.10); color: #86efac; }
 .stateNew     { background: var(--hover-2); color: var(--text-5); }
 .stateDynamic { background: rgba(99, 115, 210, 0.10); color: #818cf8; }
 

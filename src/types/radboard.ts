@@ -19,7 +19,7 @@ export interface RawIssueData {
   authorDid: string;
   title: string;
   description: string;
-  state: 'open' | 'closed';
+  state: 'open' | 'closed' | 'solved';
   createdAt: number; // millis
   labels: string[];
   reactions: { emoji: string; authors: string[] }[];

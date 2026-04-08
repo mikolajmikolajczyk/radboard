@@ -51,18 +51,15 @@ function Indicator({ indicator }: { indicator: IssueIndicator }) {
 export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, onBan }: Props) {
   return (
     <div
-      className={`${styles.card} ${isDragging ? styles.dragging : ''}`}
+      className={`${styles.card} ${isDragging ? styles.dragging : ''} ${issue.solved ? styles.cardSolved : ''}`}
       onPointerDown={onPointerDown}
       onClick={() => onClick(issue.id)}
     >
+      {issue.solved && <span className={styles.solvedBadge}>solved</span>}
       <div className={styles.meta}>
         <span className={styles.issueId}>
           <span className={styles.idDot} />
           {issue.id.slice(0, 7)}
-        </span>
-        <span className={styles.author}>
-          <span className={styles.at}>@</span>
-          {formatAuthor(issue.author)}
         </span>
         {onBan && (
           <button
@@ -72,6 +69,10 @@ export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, 
             title="Ban user"
           >⊘</button>
         )}
+        <span className={`${styles.author} ${!onBan ? styles.authorRight : ''}`}>
+          <span className={styles.at}>@</span>
+          {formatAuthor(issue.author)}
+        </span>
       </div>
 
       <p className={styles.title}>{issue.title}</p>

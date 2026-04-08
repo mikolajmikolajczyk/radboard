@@ -16,6 +16,7 @@ import WelcomeScreen from './components/welcome/WelcomeScreen';
 import AddRepoModal from './components/shared/AddRepoModal';
 import NewIssueModal from './components/issues/NewIssueModal';
 import ConfirmDialog from './components/shared/ConfirmDialog';
+import CloseIssueDialog from './components/shared/CloseIssueDialog';
 import type { IssueComment, IssueDetail as IssueDetailType, KanbanColumnData, PatchRef } from './types/kanban';
 import type { AppSetup, BannedEntry, NotificationCountData, NotificationData, RadicleIdentity, RawIssueData, RawPatchData, RepoInfo } from './types/radboard';
 import type { FileDiff } from './components/patches/DiffView';
@@ -46,7 +47,7 @@ function msToDate(ms: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function defaultColumn(state: 'open' | 'closed'): string {
+function defaultColumn(state: 'open' | 'closed' | 'solved'): string {
   return state === 'open' ? 'new' : 'closed';
 }
 
@@ -134,13 +135,14 @@ function issuesToColumns(
       title: raw.title,
       labels: raw.labels.map((l) => ({ text: l, variant: l })),
       indicator: Object.keys(indicator).length > 0 ? indicator : undefined,
+      ...(raw.state === 'solved' && { solved: true }),
     };
 
     detailMap.set(raw.id, {
       ...card,
       rid,
       rootId: raw.rootId,
-      status: raw.state === 'open' ? 'open' : 'closed',
+      status: raw.state === 'solved' ? 'solved' : raw.state === 'open' ? 'open' : 'closed',
       description: raw.description,
       createdAt: msToDate(raw.createdAt),
       reactions: raw.reactions,
@@ -215,6 +217,7 @@ export default function App() {
   const [isRepoLoading, setIsRepoLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [newIssueOpen, setNewIssueOpen] = useState(false);
+  const [pendingCloseIssue, setPendingCloseIssue] = useState<{ issueId: string; fromColId: string; source: 'kanban' | 'state' } | null>(null);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [globalInboxOpen, setGlobalInboxOpen] = useState(false);
@@ -455,16 +458,21 @@ export default function App() {
 
   function handleIssueMoved(issueId: string, fromColId: string, toColId: string) {
     if (!activeRid || !setup || fromColId === toColId) return;
-    const issue = issueDetails.get(issueId);
-    if (!issue) return;
-
-    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:'));
-
     if (toColId === 'closed') {
-      invoke('set_issue_state', { rid: activeRid, issueId, state: 'closed' }).catch(console.error);
+      setPendingCloseIssue({ issueId, fromColId, source: 'kanban' });
+      return;
     } else if (fromColId === 'closed') {
       invoke('set_issue_state', { rid: activeRid, issueId, state: 'open' }).catch(console.error);
     }
+
+    completeIssueMove(issueId, fromColId, toColId);
+  }
+
+  function completeIssueMove(issueId: string, _fromColId: string, toColId: string) {
+    if (!activeRid || !setup) return;
+    const issue = issueDetails.get(issueId);
+    if (!issue) return;
+    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:'));
 
     const STATIC = ['new', 'open', 'closed'];
     const newLabels = STATIC.includes(toColId)
@@ -602,15 +610,21 @@ export default function App() {
     const currentColId = columns.find((col) => col.issues.some((i) => i.id === issueId))?.id ?? 'new';
     if (currentColId === newColumnId) return;
 
-    const issue = issueDetails.get(issueId);
-    if (!issue) return;
-    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:'));
-
     if (newColumnId === 'closed') {
-      invoke('set_issue_state', { rid: activeRid, issueId, state: 'closed' }).catch(console.error);
+      setPendingCloseIssue({ issueId, fromColId: currentColId, source: 'state' });
+      return;
     } else if (currentColId === 'closed') {
       invoke('set_issue_state', { rid: activeRid, issueId, state: 'open' }).catch(console.error);
     }
+
+    completeStateChange(issueId, currentColId, newColumnId);
+  }
+
+  function completeStateChange(issueId: string, _currentColId: string, newColumnId: string) {
+    if (!activeRid || !setup) return;
+    const issue = issueDetails.get(issueId);
+    if (!issue) return;
+    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:'));
 
     const STATIC = ['new', 'open', 'closed'];
     const newLabels = STATIC.includes(newColumnId) ? otherLabels : [...otherLabels, `state:${newColumnId}`];
@@ -634,6 +648,18 @@ export default function App() {
         setIssueDetails(details);
       })
       .catch(console.error);
+  }
+
+  function handleCloseIssueChoice(state: 'closed' | 'solved') {
+    if (!pendingCloseIssue || !activeRid) return;
+    const { issueId, fromColId, source } = pendingCloseIssue;
+    setPendingCloseIssue(null);
+    invoke('set_issue_state', { rid: activeRid, issueId, state }).catch(console.error);
+    if (source === 'kanban') {
+      completeIssueMove(issueId, fromColId, 'closed');
+    } else {
+      completeStateChange(issueId, fromColId, 'closed');
+    }
   }
 
   function handleBanUser(did: string, alias: string, scope: 'all' | 'issues' | 'comments') {
@@ -1058,6 +1084,12 @@ function handleGlobalInboxOpen() {
             confirmLabel="Remove"
             onConfirm={() => handleRemoveRepo(confirmRemoveRid!)}
             onCancel={() => setConfirmRemoveRid(null)}
+          />
+          <CloseIssueDialog
+            open={pendingCloseIssue !== null}
+            onClose={() => handleCloseIssueChoice('closed')}
+            onSolved={() => handleCloseIssueChoice('solved')}
+            onCancel={() => setPendingCloseIssue(null)}
           />
           <GlobalInboxPanel
             open={globalInboxOpen}

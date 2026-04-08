@@ -30,6 +30,7 @@ pub async fn list_issues(rid: String) -> Result<Vec<IssueData>, String> {
             let (root_id, root) = issue.root();
             let state = match issue.state() {
                 State::Open => "open",
+                State::Closed { reason: CloseReason::Solved } => "solved",
                 State::Closed { .. } => "closed",
             };
             let comment_count = issue.replies_to(root_id).count() as u64;
@@ -66,6 +67,7 @@ pub fn get_issue(rid: String, issue_id: String) -> Result<Option<IssueData>, Str
     let (root_id, root) = issue.root();
     let state = match issue.state() {
         State::Open => "open",
+        State::Closed { reason: CloseReason::Solved } => "solved",
         State::Closed { .. } => "closed",
     };
     Ok(Some(IssueData {
@@ -153,10 +155,10 @@ pub fn set_issue_state(rid: String, issue_id: String, state: String) -> Result<(
     let repo = profile.storage.repository_mut(rid).map_err(|e| e.to_string())?;
     let signer = profile.signer().map_err(|e| e.to_string())?;
     let issue_id = issue_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
-    let new_state = if state == "closed" {
-        State::Closed { reason: CloseReason::Other }
-    } else {
-        State::Open
+    let new_state = match state.as_str() {
+        "closed" => State::Closed { reason: CloseReason::Other },
+        "solved" => State::Closed { reason: CloseReason::Solved },
+        _ => State::Open,
     };
     let mut issues = Issues::open(&repo).map_err(|e| e.to_string())?;
     let mut cache = NoCache;

@@ -56,8 +56,9 @@ export default function IssuesView({
 
   function issueMatchesFilter(i: IssueDetailType, f: Filter): boolean {
     if (f === 'all') return true;
-    if (f === 'closed') return i.status === 'closed';
-    if (f === 'open') return i.status !== 'closed' && !i.labels.some((l) => l.text.startsWith('state:'));
+    const isClosed = i.status === 'closed' || i.status === 'solved';
+    if (f === 'closed') return isClosed;
+    if (f === 'open') return !isClosed && !i.labels.some((l) => l.text.startsWith('state:'));
     // dynamic state
     return i.labels.some((l) => l.text === `state:${f}`);
   }
@@ -121,7 +122,7 @@ export default function IssuesView({
 
   const selectedIssue = selectedIssueId ? (issueDetails.get(selectedIssueId) ?? null) : null;
   const currentColumnId = selectedIssue
-    ? (selectedIssue.status === 'closed'
+    ? (selectedIssue.status === 'closed' || selectedIssue.status === 'solved'
         ? 'closed'
         : (selectedIssue.labels.find((l) => l.text.startsWith('state:'))?.text.slice(6) ?? 'new'))
     : 'new';
@@ -230,10 +231,12 @@ export default function IssuesView({
                 onClick={() => onSelectIssue(issue.id)}
               >
                 {(() => {
-                  const colId = issue.status === 'closed'
-                    ? 'closed'
+                  const colId = issue.status === 'closed' || issue.status === 'solved'
+                    ? (issue.status === 'solved' ? 'solved' : 'closed')
                     : (issue.labels.find((l) => l.text.startsWith('state:'))?.text.slice(6) ?? 'open');
-                  const badgeColor = getStateBadgeColor(colId, columnColors);
+                  const badgeColor = issue.status === 'solved'
+                    ? '#86efac'
+                    : getStateBadgeColor(colId, columnColors);
                   return (
                     <span
                       className={styles.badge}

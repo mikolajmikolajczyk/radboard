@@ -1,4 +1,5 @@
 .card {
+  position: relative;
   background: var(--bg-card);
   border: 1px solid var(--border-2);
   border-radius: 7px;
@@ -29,7 +30,7 @@
 .meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   margin-bottom: 6px;
 }
 
@@ -58,10 +59,32 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .at {
   color: var(--text-6);
+}
+
+
+.solvedBadge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(134, 239, 172, 0.10);
+  color: #86efac;
+  z-index: 1;
+}
+
+.cardSolved .meta {
+  padding-right: 50px;
 }
 
 /* Title */
@@ -110,8 +133,13 @@
   margin-right: 2px;
 }
 
+.authorRight {
+  margin-left: auto;
+}
+
 /* Ban button */
 .banBtn {
+  margin-left: auto;
   background: none;
   border: none;
   cursor: pointer;

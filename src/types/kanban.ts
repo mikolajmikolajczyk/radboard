@@ -28,6 +28,7 @@ export interface Issue {
   title: string;
   labels: IssueLabel[];
   indicator?: IssueIndicator;
+  solved?: boolean;
 }
 
 export interface KanbanColumnData {
@@ -42,7 +43,7 @@ export interface BoardTab {
   name: string;
 }
 
-export type IssueStatus = 'open' | 'in-progress' | 'closed';
+export type IssueStatus = 'open' | 'in-progress' | 'closed' | 'solved';
 
 export interface Reaction {
   emoji: string;

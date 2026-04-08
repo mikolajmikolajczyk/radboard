@@ -6,9 +6,10 @@ interface StateSelectorProps {
   currentColumnId: string;
   canEdit: boolean;
   onSelect: (colId: string) => void;
+  solvedHint?: boolean;
 }
 
-export function StateSelector({ currentColumnId, canEdit, onSelect }: StateSelectorProps) {
+export function StateSelector({ currentColumnId, canEdit, onSelect, solvedHint }: StateSelectorProps) {
   const { columns: availableColumns } = useRepo();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -37,10 +38,14 @@ export function StateSelector({ currentColumnId, canEdit, onSelect }: StateSelec
   );
   const canCreate = inputSlug.length > 0 && !availableColumns.some((c) => c.id === inputSlug);
 
-  const badgeCls = currentColumnId === 'closed' ? styles.closed
+  const effectiveStyle = solvedHint && currentColumnId === 'closed' ? styles.solved : null;
+  const badgeCls = effectiveStyle
+    ?? (currentColumnId === 'closed' ? styles.closed
     : currentColumnId === 'open'   ? styles.open
     : currentColumnId === 'new'    ? styles.stateNew
-    : styles.stateDynamic;
+    : styles.stateDynamic);
+
+  const displayTitle = solvedHint && currentColumnId === 'closed' ? 'Solved' : currentTitle;
 
   return (
     <div className={styles.stateSelector}>
@@ -50,7 +55,7 @@ export function StateSelector({ currentColumnId, canEdit, onSelect }: StateSelec
         role={canEdit ? 'button' : undefined}
         title={canEdit ? 'Change state' : undefined}
       >
-        {currentTitle}
+        {displayTitle}
         {canEdit && <span className={styles.stateCaret}>▾</span>}
       </span>
       {open && (

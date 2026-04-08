@@ -407,9 +407,10 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
               <aside className={styles.patchSidebar} style={{ width: sidebarWidth }}>
                 <div className={styles.sidebarMeta}>
                   <StateSelector
-                    currentColumnId={currentColumnId ?? (issue.status === 'closed' ? 'closed' : 'new')}
+                    currentColumnId={currentColumnId ?? (issue.status === 'closed' || issue.status === 'solved' ? 'closed' : 'new')}
                     canEdit={isAuthor || isDelegate}
                     onSelect={(colId) => issue && onStateChange(issue.id, colId)}
+                    solvedHint={issue.status === 'solved'}
                   />
 
                   <div className={styles.sidebarField}>
