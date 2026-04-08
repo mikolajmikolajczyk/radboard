@@ -440,7 +440,6 @@ export default function WelcomeScreen({ onSetup }: Props) {
   function handleRepoSelect(rid: string, localPath?: string) {
     setPendingSetup({
       rids: [rid],
-      boards: {},
       ...(localPath ? { localRepoPaths: { [rid]: localPath } } : {}),
     });
     setStep('editor');

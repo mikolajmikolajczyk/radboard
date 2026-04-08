@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { IssueComment, PatchRef } from '../types/kanban';
+import type { IssueComment, PatchRef, PriorityLevel } from '../types/kanban';
 import type { FileDiff } from '../components/patches/DiffView';
 
 interface ActionsContextValue {
@@ -7,6 +7,7 @@ interface ActionsContextValue {
   onBanUser: (did: string, alias: string, scope: 'all' | 'issues' | 'comments') => void;
   onUnbanUser: (did: string) => void;
   onStateChange: (issueId: string, colId: string) => void;
+  onPriorityChange: (issueId: string, priority: PriorityLevel | null) => void;
   onOpenPatch: (patch: PatchRef, issueId: string) => void;
   onSelectIssue: (id: string | null) => void;
   onBrowseFile: (commitOid: string, path: string) => void;

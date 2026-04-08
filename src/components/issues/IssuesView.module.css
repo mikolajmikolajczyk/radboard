@@ -276,6 +276,8 @@
   text-align: center;
 }
 
+.prioSpacer { width: 18px; flex-shrink: 0; }
+
 .rowTitle {
   flex: 1;
   font-size: 12px;
@@ -285,6 +287,21 @@
   min-width: 0;
 }
 
+.rowLabels {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.rowLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(99, 115, 210, 0.10);
+  color: #818cf8;
+}
+
 .author {
   font-size: 10px;
   color: var(--text-6);
@@ -292,13 +309,6 @@
 }
 
 .date {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  color: var(--text-7);
-  flex-shrink: 0;
-}
-
-.comments {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
   color: var(--text-7);

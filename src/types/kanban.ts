@@ -1,5 +1,9 @@
 export type ColumnId = string;
 
+export type PriorityLevel = 'critical' | 'high' | 'medium' | 'low';
+
+export const PRIORITY_LEVELS: PriorityLevel[] = ['critical', 'high', 'medium', 'low'];
+
 export interface IssueLabel {
   text: string;
   variant: 'refactor' | 'dedup' | 'inconsistency' | string;
@@ -29,6 +33,7 @@ export interface Issue {
   labels: IssueLabel[];
   indicator?: IssueIndicator;
   solved?: boolean;
+  priority?: PriorityLevel;
 }
 
 export interface KanbanColumnData {

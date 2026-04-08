@@ -15,6 +15,7 @@ import { EmojiPicker } from '../shared/EmojiPicker';
 import { CommentThread } from '../shared/CommentThread';
 import { LabelEditor } from './LabelEditor';
 import { StateSelector } from './StateSelector';
+import { PrioritySelector } from './PrioritySelector';
 import { Badge, Button, Textarea } from '../../ui';
 import { useRepo } from '../../contexts/RepoContext';
 import { useActions } from '../../contexts/ActionsContext';
@@ -43,7 +44,7 @@ function mapRawComment(raw: RawCommentData): IssueComment {
 
 export default function IssueDetail({ issue, currentColumnId, onClose, embedded = false, sidebarWidth: sidebarWidthProp, onSidebarWidthChange }: Props) {
   const { myDid, delegateDids, bannedUsers, explorerUrl, seedNode, localRepoPath, preferredEditor } = useRepo();
-  const { onRefresh: actionsOnRefresh, onBanUser, onStateChange, onOpenPatch, onCommentsLoaded } = useActions();
+  const { onRefresh: actionsOnRefresh, onBanUser, onStateChange, onPriorityChange, onOpenPatch, onCommentsLoaded } = useActions();
 
   // ACL: Edit/Lifecycle → issue author only; Label → delegates only
   const isAuthor = myDid !== null && issue?.authorDid === myDid;
@@ -407,11 +408,22 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
               <aside className={styles.patchSidebar} style={{ width: sidebarWidth }}>
                 <div className={styles.sidebarMeta}>
                   <StateSelector
-                    currentColumnId={currentColumnId ?? (issue.status === 'closed' || issue.status === 'solved' ? 'closed' : 'new')}
+                    currentColumnId={currentColumnId ?? (issue.status === 'closed' || issue.status === 'solved' ? 'closed' : 'open')}
                     canEdit={isAuthor || isDelegate}
                     onSelect={(colId) => issue && onStateChange(issue.id, colId)}
                     solvedHint={issue.status === 'solved'}
                   />
+
+                  {issue.status === 'open' && (
+                    <div className={styles.sidebarField}>
+                      <span className={styles.sidebarFieldLabel}>priority</span>
+                      <PrioritySelector
+                        current={issue.priority}
+                        canEdit={isAuthor || isDelegate}
+                        onSelect={(p) => onPriorityChange(issue.id, p)}
+                      />
+                    </div>
+                  )}
 
                   <div className={styles.sidebarField}>
                     <span className={styles.sidebarFieldLabel}>author</span>

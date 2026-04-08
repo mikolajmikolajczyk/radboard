@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import IssueDetail from './IssueDetail';
 import type { IssueDetail as IssueDetailType } from '../../types/kanban';
 import { useRepo } from '../../contexts/RepoContext';
+import { useActions } from '../../contexts/ActionsContext';
 import { FilterChip, useResizableDivider, useOutsideClick } from '../../ui';
+import { PrioritySelector } from './PrioritySelector';
 import styles from './IssuesView.module.css';
 
 type Filter = 'all' | 'open' | 'closed' | string; // string covers dynamic state: labels
@@ -29,7 +31,9 @@ export default function IssuesView({
   onReturn,
   returnLabel,
 }: Props) {
-  const { columnColors } = useRepo();
+  const { columnColors, myDid, delegateDids } = useRepo();
+  const { onPriorityChange } = useActions();
+  const isDelegate = myDid !== null && delegateDids.includes(myDid);
   const [filter, setFilter] = useState<Filter>('open');
   const [search, setSearch] = useState('');
   const [labelFilters, setLabelFilters] = useState<Map<string, 'or' | 'and'>>(new Map());
@@ -38,14 +42,19 @@ export default function IssuesView({
   const labelDropdownRef = useRef<HTMLDivElement>(null);
 
   const { width: listWidth, dividerProps, isDragging } = useResizableDivider({
-    initial: 360, min: 200, max: 600,
+    initial: Math.round(window.innerWidth / 2), min: 200, max: Math.round(window.innerWidth * 0.75),
   });
 
   useOutsideClick(labelDropdownRef, () => setLabelDropdownOpen(false), labelDropdownOpen);
 
-  const allIssues = [...issueDetails.values()].sort(
-    (a, b) => (a.createdAt < b.createdAt ? 1 : -1),
-  );
+  // Sort: uncategorized (no priority) first, then by priority level, then by date desc
+  const priorityRank: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4 };
+  const allIssues = [...issueDetails.values()].sort((a, b) => {
+    const aRank = a.priority ? priorityRank[a.priority] : 0;
+    const bRank = b.priority ? priorityRank[b.priority] : 0;
+    if (aRank !== bRank) return aRank - bRank;
+    return a.createdAt < b.createdAt ? 1 : -1;
+  });
 
   // Collect unique dynamic states from state: labels, preserving first-seen order
   const dynamicStates = [...new Set(
@@ -124,8 +133,8 @@ export default function IssuesView({
   const currentColumnId = selectedIssue
     ? (selectedIssue.status === 'closed' || selectedIssue.status === 'solved'
         ? 'closed'
-        : (selectedIssue.labels.find((l) => l.text.startsWith('state:'))?.text.slice(6) ?? 'new'))
-    : 'new';
+        : (selectedIssue.labels.find((l) => l.text.startsWith('state:'))?.text.slice(6) ?? 'open'))
+    : 'open';
   return (
     <div className={styles.container}>
       {isDragging && <div className={styles.dragOverlay} />}
@@ -246,12 +255,28 @@ export default function IssuesView({
                     </span>
                   );
                 })()}
+                {issue.status === 'open' && !issue.labels.some((l) => l.text.startsWith('state:')) ? (
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <PrioritySelector
+                      current={issue.priority}
+                      canEdit={isDelegate || (myDid !== null && issue.authorDid === myDid)}
+                      onSelect={(p) => onPriorityChange(issue.id, p)}
+                      compact
+                    />
+                  </span>
+                ) : (
+                  <span className={styles.prioSpacer} />
+                )}
                 <span className={styles.rowTitle}>{issue.title}</span>
+                {issue.labels.filter((l) => !l.text.startsWith('state:')).length > 0 && (
+                  <span className={styles.rowLabels}>
+                    {issue.labels.filter((l) => !l.text.startsWith('state:')).map((l) => (
+                      <span key={l.text} className={styles.rowLabel}>{l.text}</span>
+                    ))}
+                  </span>
+                )}
                 <span className={styles.author}>{issue.author}</span>
                 <span className={styles.date}>{issue.createdAt.slice(0, 10)}</span>
-                {(issue.commentCount ?? 0) > 0 && (
-                  <span className={styles.comments}>{issue.commentCount}💬</span>
-                )}
               </button>
             ))}
           </div>

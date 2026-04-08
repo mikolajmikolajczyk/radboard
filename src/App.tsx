@@ -17,7 +17,8 @@ import AddRepoModal from './components/shared/AddRepoModal';
 import NewIssueModal from './components/issues/NewIssueModal';
 import ConfirmDialog from './components/shared/ConfirmDialog';
 import CloseIssueDialog from './components/shared/CloseIssueDialog';
-import type { IssueComment, IssueDetail as IssueDetailType, KanbanColumnData, PatchRef } from './types/kanban';
+import type { IssueComment, IssueDetail as IssueDetailType, KanbanColumnData, PatchRef, PriorityLevel } from './types/kanban';
+import { PRIORITY_LEVELS } from './types/kanban';
 import type { AppSetup, BannedEntry, NotificationCountData, NotificationData, RadicleIdentity, RawIssueData, RawPatchData, RepoInfo } from './types/radboard';
 import type { FileDiff } from './components/patches/DiffView';
 import { Tabs, TabsList, TabsTrigger } from './ui';
@@ -48,10 +49,10 @@ function msToDate(ms: number): string {
 }
 
 function defaultColumn(state: 'open' | 'closed' | 'solved'): string {
-  return state === 'open' ? 'new' : 'closed';
+  return state === 'open' ? 'open' : 'closed';
 }
 
-const STATIC_COL_IDS = new Set(['new', 'open', 'closed']);
+const STATIC_COL_IDS = new Set(['open', 'closed']);
 
 function titleFromId(id: string): string {
   return id.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
@@ -60,7 +61,6 @@ function titleFromId(id: string): string {
 function issuesToColumns(
   issues: RawIssueData[],
   rid: string,
-  boardState: Record<string, string>,
   columnOrder: string[],
   bannedUsers: BannedEntry[] = [],
   rawPatches: RawPatchData[] = [],
@@ -89,7 +89,6 @@ function issuesToColumns(
   ];
 
   const cols: Record<string, KanbanColumnData> = {
-    new:    { id: 'new',    title: 'New',    issues: [], isStatic: true },
     open:   { id: 'open',   title: 'Open',   issues: [], isStatic: true },
     closed: { id: 'closed', title: 'Closed', issues: [], isStatic: true },
   };
@@ -128,14 +127,25 @@ function issuesToColumns(
       ...(raw.commentCount > 0 && { comments: raw.commentCount }),
       ...(openPatchCount > 0 && { patches: openPatchCount }),
     };
+    // Parse priority label
+    const priorityLabel = raw.labels.find((l) => l.startsWith('priority:'));
+    const parsedPriority = priorityLabel ? priorityLabel.slice(9) : null;
+    const priority: PriorityLevel | undefined =
+      (parsedPriority && PRIORITY_LEVELS.includes(parsedPriority as PriorityLevel))
+        ? (parsedPriority as PriorityLevel)
+        : undefined;
+
     const card = {
       id: raw.id,
       author: raw.author,
       authorDid: raw.authorDid,
       title: raw.title,
-      labels: raw.labels.map((l) => ({ text: l, variant: l })),
+      labels: raw.labels
+        .filter((l) => !l.startsWith('priority:'))
+        .map((l) => ({ text: l, variant: l })),
       indicator: Object.keys(indicator).length > 0 ? indicator : undefined,
       ...(raw.state === 'solved' && { solved: true }),
+      priority,
     };
 
     detailMap.set(raw.id, {
@@ -158,16 +168,20 @@ function issuesToColumns(
       })),
     });
 
-    // state: label determines dynamic column (first one wins); boardState only matters for new/open
+    // state: label determines dynamic column; otherwise default by raw state
     const stateLabel = raw.labels.find((l) => l.startsWith('state:'));
     const labelCol = stateLabel ? stateLabel.slice(6) : null;
 
-    const colId = labelCol ?? boardState[raw.id] ?? defaultColumn(raw.state);
+    const colId = labelCol ?? defaultColumn(raw.state);
     (cols[colId] ?? cols[defaultColumn(raw.state)]).issues.push(card);
   }
 
+  // Sort Open column by priority zone order (uncategorized issues go last)
+  const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  cols.open.issues.sort((a, b) => (priorityOrder[a.priority ?? ''] ?? 4) - (priorityOrder[b.priority ?? ''] ?? 4));
+
   return [
-    [cols.new, cols.open, ...orderedDynamic.map((id) => cols[id]), cols.closed],
+    [cols.open, ...orderedDynamic.map((id) => cols[id]), cols.closed],
     detailMap,
   ];
 }
@@ -344,9 +358,8 @@ export default function App() {
         invoke<RawPatchData[]>('list_patches', { rid }),
       ]).then(([issues, patches]) => {
         setRawPatches(patches);
-        const boardState = setup.boards[rid] ?? {};
         const columnOrder = setup.columnOrder?.[rid] ?? [];
-        const [cols, details] = issuesToColumns(issues, rid, boardState, columnOrder, setup.bannedUsers, patches);
+        const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches);
         setColumns(cols);
         setIssueDetails(details);
       }).catch(console.error);
@@ -373,9 +386,8 @@ export default function App() {
     // Show issues as soon as they arrive (without patch indicators yet)
     issuesPromise.then((issues) => {
       if (cancelled) return;
-      const boardState = setup.boards[rid] ?? {};
       const columnOrder = setup.columnOrder?.[rid] ?? [];
-      const [cols, details] = issuesToColumns(issues, rid, boardState, columnOrder, setup.bannedUsers, []);
+      const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, []);
       startTransition(() => {
         setColumns(cols);
         setIssueDetails(details);
@@ -392,9 +404,8 @@ export default function App() {
     // When patches arrive, recompute with both
     Promise.all([issuesPromise, patchesPromise]).then(([issues, patches]) => {
       if (cancelled) return;
-      const boardState = setup.boards[rid] ?? {};
       const columnOrder = setup.columnOrder?.[rid] ?? [];
-      const [cols, details] = issuesToColumns(issues, rid, boardState, columnOrder, setup.bannedUsers, patches);
+      const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches);
       startTransition(() => {
         setRawPatches(patches);
         setColumns(cols);
@@ -416,7 +427,7 @@ export default function App() {
   }, [activeRid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSetup(s: AppSetup) {
-    const full = { ...s, boards: s.boards ?? {} };
+    const full = { ...s };
     setSetup(full);
     setActiveRid(full.rids[0] ?? null);
     invoke('save_config', { config: full }).catch(console.error);
@@ -466,20 +477,7 @@ export default function App() {
 
   function handleColumnsChange(newCols: KanbanColumnData[]) {
     if (!setup || !activeRid) return;
-    // Rebuild board state from current column positions
-    const positions: Record<string, string> = {};
-    for (const col of newCols) {
-      for (const issue of col.issues) {
-        positions[issue.id] = col.id;
-      }
-    }
-    const updated = {
-      ...setup,
-      boards: { ...setup.boards, [activeRid]: positions },
-    };
-    setSetup(updated);
     setColumns(newCols);
-    invoke('save_config', { config: updated }).catch(console.error);
   }
 
   function handleIssueMoved(issueId: string, fromColId: string, toColId: string) {
@@ -498,21 +496,14 @@ export default function App() {
     if (!activeRid || !setup) return;
     const issue = issueDetails.get(issueId);
     if (!issue) return;
-    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:'));
+    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:') && !l.startsWith('priority:'));
 
-    const STATIC = ['new', 'open', 'closed'];
+    const STATIC = ['open', 'closed'];
     const newLabels = STATIC.includes(toColId)
       ? otherLabels
       : [...otherLabels, `state:${toColId}`];
 
-    // Capture the updated board state now (before the async call), so the
-    // refresh after label_issue uses the new column position rather than the
-    // stale closure value that predates handleColumnsChange's setSetup call.
     const rid = activeRid;
-    const updatedBoardState = {
-      ...(setup.boards[rid] ?? {}),
-      [issueId]: toColId,
-    };
     const columnOrder = setup.columnOrder?.[rid] ?? [];
     const bannedUsers = setup.bannedUsers ?? [];
     invoke('label_issue', { rid, issueId, labels: newLabels })
@@ -522,7 +513,31 @@ export default function App() {
       ]))
       .then(([issues, patches]) => {
         setRawPatches(patches);
-        const [cols, details] = issuesToColumns(issues, rid, updatedBoardState, columnOrder, bannedUsers, patches);
+        const [cols, details] = issuesToColumns(issues, rid, columnOrder, bannedUsers, patches);
+        setColumns(cols);
+        setIssueDetails(details);
+      })
+      .catch(console.error);
+  }
+
+  function handlePriorityChange(issueId: string, priority: PriorityLevel | null) {
+    if (!activeRid || !setup) return;
+    const issue = issueDetails.get(issueId);
+    if (!issue) return;
+    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('priority:'));
+    const newLabels = priority ? [...otherLabels, `priority:${priority}`] : otherLabels;
+
+    const rid = activeRid;
+    const columnOrder = setup.columnOrder?.[rid] ?? [];
+    const bannedUsers = setup.bannedUsers ?? [];
+    invoke('label_issue', { rid, issueId, labels: newLabels })
+      .then(() => Promise.all([
+        invoke<RawIssueData[]>('list_issues', { rid }),
+        invoke<RawPatchData[]>('list_patches', { rid }),
+      ]))
+      .then(([issues, patches]) => {
+        setRawPatches(patches);
+        const [cols, details] = issuesToColumns(issues, rid, columnOrder, bannedUsers, patches);
         setColumns(cols);
         setIssueDetails(details);
       })
@@ -613,9 +628,8 @@ export default function App() {
       invoke<RawPatchData[]>('list_patches', { rid: activeRid }),
     ]).then(([issues, patches]) => {
       setRawPatches(patches);
-      const boardState = setup.boards[activeRid] ?? {};
       const columnOrder = setup.columnOrder?.[activeRid] ?? [];
-      const [cols, details] = issuesToColumns(issues, activeRid, boardState, columnOrder, setup.bannedUsers, patches);
+      const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers, patches);
       setColumns(cols);
       setIssueDetails(details);
     }).catch(console.error);
@@ -633,7 +647,7 @@ export default function App() {
 
   function handleStateChange(issueId: string, newColumnId: string) {
     if (!activeRid || !setup) return;
-    const currentColId = columns.find((col) => col.issues.some((i) => i.id === issueId))?.id ?? 'new';
+    const currentColId = columns.find((col) => col.issues.some((i) => i.id === issueId))?.id ?? 'open';
     if (currentColId === newColumnId) return;
 
     if (newColumnId === 'closed') {
@@ -650,15 +664,10 @@ export default function App() {
     if (!activeRid || !setup) return;
     const issue = issueDetails.get(issueId);
     if (!issue) return;
-    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:'));
+    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:') && !l.startsWith('priority:'));
 
-    const STATIC = ['new', 'open', 'closed'];
+    const STATIC = ['open', 'closed'];
     const newLabels = STATIC.includes(newColumnId) ? otherLabels : [...otherLabels, `state:${newColumnId}`];
-
-    const updatedBoards = { ...setup.boards, [activeRid]: { ...(setup.boards[activeRid] ?? {}), [issueId]: newColumnId } };
-    const updatedSetup = { ...setup, boards: updatedBoards };
-    setSetup(updatedSetup);
-    invoke('save_config', { config: updatedSetup }).catch(console.error);
 
     invoke('label_issue', { rid: activeRid, issueId, labels: newLabels })
       .then(() => Promise.all([
@@ -667,9 +676,8 @@ export default function App() {
       ]))
       .then(([issues, patches]) => {
         setRawPatches(patches);
-        const boardState = updatedSetup.boards[activeRid] ?? {};
-        const columnOrder = updatedSetup.columnOrder?.[activeRid] ?? [];
-        const [cols, details] = issuesToColumns(issues, activeRid, boardState, columnOrder, updatedSetup.bannedUsers ?? [], patches);
+        const columnOrder = setup.columnOrder?.[activeRid] ?? [];
+        const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers ?? [], patches);
         setColumns(cols);
         setIssueDetails(details);
       })
@@ -900,6 +908,7 @@ function handleGlobalInboxOpen() {
     onBanUser: handleBanUser,
     onUnbanUser: handleUnbanUser,
     onStateChange: handleStateChange,
+    onPriorityChange: handlePriorityChange,
     onOpenPatch: (p: PatchRef, issueId: string) => {
       setPatchReturnIssueId(issueId);
       setSelectedIssueInView(null);
@@ -994,7 +1003,7 @@ function handleGlobalInboxOpen() {
           <main className={styles.main}>
             {isRepoLoading && <div className={styles.loadingBar}><div className={styles.loadingBarInner} /></div>}
             {activeView === 'kanban' && (
-              <KanbanBoard columns={columns} onChange={handleColumnsChange} onIssueMoved={handleIssueMoved} onColumnsReorder={handleColumnsReorder} onIssueClick={handleIssueClick} onNewIssue={() => setNewIssueOpen(true)} canDrag={(issue) => canModify(issue.id)} columnColors={setup.columnColors?.[activeRid!] ?? {}} onColumnColorChange={handleColumnColorChange} onColumnRemove={handleColumnRemove} visibleColumns={setup.visibleColumns ?? columns.length} bannedDids={new Set((setup.bannedUsers ?? []).filter((b) => b.scope !== 'comments').map((b) => b.did))} onBanUser={handleBanUser} delegateDids={activeDelegateDids} myDid={myDid} />
+              <KanbanBoard columns={columns} onChange={handleColumnsChange} onIssueMoved={handleIssueMoved} onPriorityChange={handlePriorityChange} onColumnsReorder={handleColumnsReorder} onIssueClick={handleIssueClick} onNewIssue={() => setNewIssueOpen(true)} canDrag={(issue) => canModify(issue.id)} columnColors={setup.columnColors?.[activeRid!] ?? {}} onColumnColorChange={handleColumnColorChange} onColumnRemove={handleColumnRemove} visibleColumns={setup.visibleColumns ?? columns.length} bannedDids={new Set((setup.bannedUsers ?? []).filter((b) => b.scope !== 'comments').map((b) => b.did))} onBanUser={handleBanUser} delegateDids={activeDelegateDids} myDid={myDid} />
             )}
             {activeView === 'issues' && (
               <IssuesView

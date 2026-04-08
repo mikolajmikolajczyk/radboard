@@ -42,7 +42,6 @@ export function StateSelector({ currentColumnId, canEdit, onSelect, solvedHint }
   const badgeCls = effectiveStyle
     ?? (currentColumnId === 'closed' ? styles.closed
     : currentColumnId === 'open'   ? styles.open
-    : currentColumnId === 'new'    ? styles.stateNew
     : styles.stateDynamic);
 
   const displayTitle = solvedHint && currentColumnId === 'closed' ? 'Solved' : currentTitle;

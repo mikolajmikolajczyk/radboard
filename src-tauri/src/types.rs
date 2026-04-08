@@ -5,8 +5,6 @@ use serde::{Deserialize, Serialize};
 pub struct LocalConfig {
     pub rids: Vec<String>,
     #[serde(default)]
-    pub boards: std::collections::HashMap<String, std::collections::HashMap<String, String>>,
-    #[serde(default)]
     pub column_order: std::collections::HashMap<String, Vec<String>>,
     #[serde(default)]
     pub column_colors: std::collections::HashMap<String, std::collections::HashMap<String, String>>,

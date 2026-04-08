@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { HexColorPicker } from 'react-colorful';
 import { createPortal } from 'react-dom';
-import type { KanbanColumnData, Issue } from '../../types/kanban';
+import type { KanbanColumnData, Issue, PriorityLevel } from '../../types/kanban';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
 import styles from './KanbanBoard.module.css';
@@ -16,6 +16,7 @@ interface Props {
   columns: KanbanColumnData[];
   onChange: (columns: KanbanColumnData[]) => void;
   onIssueMoved?: (issueId: string, fromColId: string, toColId: string) => void;
+  onPriorityChange?: (issueId: string, priority: PriorityLevel | null) => void;
   onColumnsReorder?: (columns: KanbanColumnData[]) => void;
   onIssueClick: (id: string) => void;
   onNewIssue: () => void;
@@ -33,6 +34,7 @@ interface Props {
 interface InsertInfo {
   columnId: string;
   beforeId: string | null;
+  zone?: PriorityLevel;
 }
 
 interface PendingDrag {
@@ -66,6 +68,7 @@ export default function KanbanBoard({
   columns,
   onChange,
   onIssueMoved,
+  onPriorityChange,
   onColumnsReorder,
   onIssueClick,
   onNewIssue,
@@ -103,11 +106,13 @@ export default function KanbanBoard({
 
   const onChangeRef = useRef(onChange);
   const onIssueMoveRef = useRef(onIssueMoved);
+  const onPriorityChangeRef = useRef(onPriorityChange);
   const onColumnsReorderRef = useRef(onColumnsReorder);
   const columnsRef = useRef(columns);
 
   onChangeRef.current = onChange;
   onIssueMoveRef.current = onIssueMoved;
+  onPriorityChangeRef.current = onPriorityChange;
   onColumnsReorderRef.current = onColumnsReorder;
   columnsRef.current = columns;
 
@@ -193,8 +198,28 @@ export default function KanbanBoard({
 
         if (columnEl) {
           const columnId = columnEl.dataset.columnId!;
+
+          // Detect priority zone when hovering over the Open column
+          let zone: PriorityLevel | undefined;
+          let searchRoot: HTMLElement = columnEl;
+          if (columnId === 'open') {
+            const VALID_ZONES = new Set(['critical', 'high', 'medium', 'low']);
+            const zoneEls = Array.from(
+              columnEl.querySelectorAll<HTMLElement>('[data-zone-id]'),
+            );
+            for (const zoneEl of zoneEls) {
+              const rect = zoneEl.getBoundingClientRect();
+              if (ghostCenterY >= rect.top && ghostCenterY <= rect.bottom) {
+                const zoneId = zoneEl.dataset.zoneId!;
+                zone = VALID_ZONES.has(zoneId) ? (zoneId as PriorityLevel) : undefined;
+                searchRoot = zoneEl;
+                break;
+              }
+            }
+          }
+
           const cardEls = Array.from(
-            columnEl.querySelectorAll<HTMLElement>('[data-card-id]'),
+            searchRoot.querySelectorAll<HTMLElement>('[data-card-id]'),
           ).filter((el) => el.dataset.cardId !== activeRef.current!.issue.id);
 
           let beforeId: string | null = null;
@@ -206,7 +231,7 @@ export default function KanbanBoard({
             }
           }
 
-          const newInfo: InsertInfo = { columnId, beforeId };
+          const newInfo: InsertInfo = { columnId, beforeId, zone };
           insertInfoRef.current = newInfo;
           setInsertInfo(newInfo);
         }
@@ -286,6 +311,15 @@ export default function KanbanBoard({
             next = cols.map((col) =>
               col.id === info.columnId ? { ...col, issues: reordered } : col,
             );
+
+            // Fire priority change if zone changed within Open column
+            if (info.columnId === 'open') {
+              const targetPriority = info.zone ?? null;
+              const currentPriority = issue.priority ?? null;
+              if (targetPriority !== currentPriority) {
+                onPriorityChangeRef.current?.(issue.id, targetPriority);
+              }
+            }
           } else {
             const targetIssues = cols.find((c) => c.id === info.columnId)!.issues;
             const insertIdx = info.beforeId
@@ -304,6 +338,11 @@ export default function KanbanBoard({
 
             // Fire side-effect callback for cross-column moves
             onIssueMoveRef.current?.(issue.id, sourceCol.id, info.columnId);
+
+            // When dropping into Open from another column, set priority via zone
+            if (info.columnId === 'open') {
+              onPriorityChangeRef.current?.(issue.id, info.zone ?? null);
+            }
           }
 
           onChangeRef.current(next);
@@ -415,6 +454,9 @@ export default function KanbanBoard({
             insertBeforeId={
               insertInfo?.columnId === column.id ? insertInfo.beforeId : undefined
             }
+            insertZone={
+              insertInfo?.columnId === column.id ? insertInfo.zone : undefined
+            }
             isColInsertBefore={colInsertBefore === column.id}
             isColDragging={colDraggingId === column.id}
             color={columnColors[column.id]}
@@ -422,7 +464,7 @@ export default function KanbanBoard({
             onColumnPointerDown={handleColumnPointerDown}
             onRightClick={(e) => handleColumnRightClick(e, column.id)}
             onIssueClick={onIssueClick}
-            onNewIssue={column.id === 'new' ? onNewIssue : undefined}
+            onNewIssue={column.id === 'open' ? onNewIssue : undefined}
             canDrag={canDrag}
             onBan={onBanUser ? (issue) => {
               const canBan = myDid !== null

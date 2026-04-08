@@ -133,6 +133,101 @@
 .colDynamic .badge    { background: var(--col-prog-badge-bg, var(--hover-3)); color: var(--col-prog-text, var(--text-2)); }
 .colDynamic .dropZone { border-color: var(--col-prog-border, var(--border-3)); }
 
+/* ── Priority zones (Open column) ────────────────────────── */
+
+.dropZoneZoned {
+  gap: 0;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.zone {
+  display: flex;
+  flex-direction: column;
+  border: 1px dashed var(--border-2);
+  border-radius: 6px;
+  padding: 4px 6px 6px;
+  margin-bottom: 4px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.zone:last-child {
+  margin-bottom: 0;
+}
+
+.zoneOver {
+  background: var(--hover-1);
+  border-style: solid;
+}
+
+.zoneHeader {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px 4px;
+}
+
+.zoneDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.zoneLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-5);
+}
+
+.zoneCount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-6);
+  margin-left: auto;
+}
+
+.zoneContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 8px;
+}
+
+.zoneEmpty {
+  min-height: 4px;
+}
+
+/* Zone colour accents */
+.zoneCritical { border-color: rgba(248, 113, 113, 0.25); }
+.zoneCritical .zoneDot { background: #f87171; }
+.zoneCritical .zoneLabel { color: #f87171; }
+.zoneCritical.zoneOver { background: rgba(248, 113, 113, 0.06); border-color: rgba(248, 113, 113, 0.5); }
+
+.zoneHigh { border-color: rgba(251, 191, 36, 0.25); }
+.zoneHigh .zoneDot { background: #fbbf24; }
+.zoneHigh .zoneLabel { color: #fbbf24; }
+.zoneHigh.zoneOver { background: rgba(251, 191, 36, 0.06); border-color: rgba(251, 191, 36, 0.5); }
+
+.zoneMedium { border-color: rgba(96, 165, 250, 0.25); }
+.zoneMedium .zoneDot { background: #60a5fa; }
+.zoneMedium .zoneLabel { color: #60a5fa; }
+.zoneMedium.zoneOver { background: rgba(96, 165, 250, 0.06); border-color: rgba(96, 165, 250, 0.5); }
+
+.zoneLow { border-color: rgba(156, 163, 175, 0.25); }
+.zoneLow .zoneDot { background: #9ca3af; }
+.zoneLow .zoneLabel { color: #9ca3af; }
+.zoneLow.zoneOver { background: rgba(156, 163, 175, 0.06); border-color: rgba(156, 163, 175, 0.5); }
+
+.zoneUncategorized { border-color: rgba(107, 114, 128, 0.18); border-style: dotted; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border-2); }
+.zoneUncategorized .zoneDot { background: none; border: 1px solid #6b7280; }
+.zoneUncategorized .zoneLabel { color: #6b7280; }
+.zoneUncategorized.zoneOver { background: rgba(107, 114, 128, 0.06); border-color: rgba(107, 114, 128, 0.4); border-style: solid; }
+
 /* Column drag states */
 .colDraggingSource {
   opacity: 0.4;

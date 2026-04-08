@@ -180,9 +180,7 @@ export interface BlameHunkData {
 
 export interface AppSetup {
   rids: string[];
-  /** rid → issueId → columnId. Issues absent from map default to 'new' (open) or 'closed'. */
-  boards: Record<string, Record<string, string>>;
-  /** rid → ordered list of dynamic column ids (excludes new/open/closed) */
+  /** rid → ordered list of dynamic column ids (excludes open/closed) */
   columnOrder?: Record<string, string[]>;
   /** rid → colId → hex color */
   columnColors?: Record<string, Record<string, string>>;

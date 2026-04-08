@@ -71,7 +71,11 @@ export default function NewIssueModal({ open, rid, labelSuggestions = [], onCrea
   async function handleSubmit() {
     if (!title.trim() || submitting) return;
     const pending = labelInput.trim().replace(/,$/, '');
-    const finalLabels = pending && !labels.includes(pending) ? [...labels, pending] : labels;
+    let finalLabels = pending && !labels.includes(pending) ? [...labels, pending] : labels;
+    // Default to medium priority if no priority label was explicitly set
+    if (!finalLabels.some((l) => l.startsWith('priority:'))) {
+      finalLabels = [...finalLabels, 'priority:medium'];
+    }
     setSubmitting(true);
     try {
       await invoke('create_issue', { rid, title: title.trim(), description: description.trim(), labels: finalLabels });
