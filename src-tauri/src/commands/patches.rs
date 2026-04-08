@@ -7,7 +7,7 @@ use radicle::prelude::Did;
 use radicle::profile::Profile;
 use radicle::storage::{ReadRepository as _, ReadStorage as _, WriteStorage as _};
 
-use crate::helpers::{build_patch_comments, pick_revision, resolve_author};
+use crate::helpers::{announce_refs, build_patch_comments, pick_revision, resolve_author};
 use crate::types::{PatchData, PatchDetailData, PatchRevisionRef, PatchReviewData};
 
 #[tauri::command]
@@ -161,6 +161,7 @@ pub fn add_patch_comment(rid: String, patch_id: String, revision_id: String, bod
     let mut patch = patches.get_mut(&oid, &mut cache).map_err(|e| e.to_string())?;
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
     patch.comment(rev_id, body, None, None, vec![], &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -177,6 +178,7 @@ pub fn reply_patch_comment(rid: String, patch_id: String, revision_id: String, c
     let mut patch = patches.get_mut(&oid, &mut cache).map_err(|e| e.to_string())?;
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
     patch.comment(rev_id, body, Some(comment_id), None, vec![], &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -194,6 +196,7 @@ pub fn react_patch_comment(rid: String, patch_id: String, revision_id: String, e
     let mut patch = patches.get_mut(&oid, &mut cache).map_err(|e| e.to_string())?;
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
     patch.react(rev_id, reaction, None, active, &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -218,6 +221,7 @@ pub fn review_patch(rid: String, patch_id: String, revision_id: String, verdict:
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
 
     patch.review(rev_id, v, msg, vec![], &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -256,6 +260,7 @@ pub fn add_patch_line_comment(
     let reply_oid = reply_to.map(|r| r.parse::<CommentId>().map_err(|e| e.to_string())).transpose()?;
     patch.comment(rev_id, body, reply_oid, Some(location), vec![] as Vec<radicle::cob::Embed<radicle::cob::Uri>>, &signer)
         .map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -271,6 +276,7 @@ pub fn archive_patch(rid: String, patch_id: String) -> Result<(), String> {
     let mut cache = NoCache;
     let mut patch = patches.get_mut(&oid, &mut cache).map_err(|e| e.to_string())?;
     patch.archive(&signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 

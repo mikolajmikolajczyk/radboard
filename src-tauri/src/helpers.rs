@@ -1,9 +1,18 @@
 use radicle::cob::thread::CommentId;
-use radicle::node::{AliasStore as _, NodeId};
+use radicle::node::{AliasStore as _, Handle as _, Node, NodeId};
 use radicle::prelude::Did;
 use radicle::profile::Profile;
 
 use crate::types::{CodeLocationData, CommentData, ReactionData};
+
+/// Notify the running Radicle node that refs have changed so it re-indexes and
+/// announces to peers.  Best-effort: if the node is not running the COB write
+/// already succeeded, so we silently ignore connection errors.
+pub(crate) fn announce_refs(profile: &Profile, rid: radicle::prelude::RepoId) {
+    let socket = profile.node().join("control.sock");
+    let mut node = Node::new(&socket);
+    let _ = node.announce_refs_for(rid, [profile.public_key]);
+}
 
 pub(crate) fn resolve_author(profile: &Profile, pk: NodeId) -> String {
     profile

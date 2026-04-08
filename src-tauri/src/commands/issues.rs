@@ -7,7 +7,7 @@ use radicle::prelude::Did;
 use radicle::profile::Profile;
 use radicle::storage::{ReadStorage as _, WriteStorage as _};
 
-use crate::helpers::{build_comments, reactions_from, resolve_author};
+use crate::helpers::{announce_refs, build_comments, reactions_from, resolve_author};
 use crate::types::IssueData;
 
 #[tauri::command]
@@ -107,6 +107,7 @@ pub fn create_issue(
     let issue = issues
         .create(title, description, &parsed_labels, &[], [], &mut cache, &signer)
         .map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(issue.id().to_string())
 }
 
@@ -125,6 +126,7 @@ pub fn edit_issue(rid: String, issue_id: String, title: String, description: Str
     let mut issue = issues.get_mut(&issue_id, &mut cache).map_err(|e| e.to_string())?;
     issue.edit(title, &signer).map_err(|e| e.to_string())?;
     issue.edit_description(description, [], &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -145,6 +147,7 @@ pub fn label_issue(rid: String, issue_id: String, labels: Vec<String>) -> Result
     let mut cache = NoCache;
     let mut issue = issues.get_mut(&issue_id, &mut cache).map_err(|e| e.to_string())?;
     issue.label(parsed_labels, &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -164,6 +167,7 @@ pub fn set_issue_state(rid: String, issue_id: String, state: String) -> Result<(
     let mut cache = NoCache;
     let mut issue = issues.get_mut(&issue_id, &mut cache).map_err(|e| e.to_string())?;
     issue.lifecycle(new_state, &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -182,6 +186,7 @@ pub fn add_comment(rid: String, issue_id: String, body: String) -> Result<(), St
     let (root_id, _) = issue.root();
     let root_id = *root_id;
     issue.comment(body, root_id, vec![], &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -208,6 +213,7 @@ pub fn reply_comment(
     issue
         .comment(body, comment_id, vec![], &signer)
         .map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
 
@@ -237,5 +243,6 @@ pub fn react_comment(
     issue
         .react(comment_id, reaction, active, &signer)
         .map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
     Ok(())
 }
