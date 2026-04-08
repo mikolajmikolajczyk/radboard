@@ -1,4 +1,4 @@
-import { useEffect, useState, startTransition, useMemo } from 'react';
+import { useEffect, useRef, useState, startTransition, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useZoom } from './hooks/useZoom';
 import { useTheme } from './hooks/useTheme';
@@ -226,6 +226,11 @@ export default function App() {
   const { zoom, zoomIn, zoomOut, resetZoom, canZoomIn, canZoomOut } = useZoom();
   const { theme, toggle: toggleTheme } = useTheme();
 
+  // Pending selections after repo switch (set by inbox navigation, consumed by data-load effect)
+  const pendingPatchId = useRef<string | null>(null);
+  const pendingIssueId = useRef<string | null>(null);
+  const pendingFilesView = useRef<boolean>(false);
+
   // Load persisted config on startup
   useEffect(() => {
     invoke<AppSetup | null>('load_config')
@@ -356,6 +361,12 @@ export default function App() {
     setIsRepoLoading(true);
     const rid = activeRid;
 
+    // Apply pending files view navigation (tags) — doesn't depend on loaded data
+    if (pendingFilesView.current) {
+      pendingFilesView.current = false;
+      setActiveView('files');
+    }
+
     const issuesPromise = invoke<RawIssueData[]>('list_issues', { rid });
     const patchesPromise = invoke<RawPatchData[]>('list_patches', { rid });
 
@@ -369,6 +380,13 @@ export default function App() {
         setColumns(cols);
         setIssueDetails(details);
       });
+      // Apply pending issue selection from inbox navigation
+      const pendingIssue = pendingIssueId.current;
+      if (pendingIssue) {
+        pendingIssueId.current = null;
+        setSelectedIssueInView(pendingIssue);
+        setActiveView('issues');
+      }
     }).catch(console.error);
 
     // When patches arrive, recompute with both
@@ -382,6 +400,14 @@ export default function App() {
         setColumns(cols);
         setIssueDetails(details);
       });
+      // Apply pending patch selection from inbox navigation
+      const pendingPatch = pendingPatchId.current;
+      if (pendingPatch) {
+        pendingPatchId.current = null;
+        const raw = patches.find((p: RawPatchData) => p.id === pendingPatch);
+        if (raw) setSelectedPatch({ id: raw.id, title: raw.title, author: raw.author, authorDid: raw.authorDid, state: raw.state, head: raw.head });
+        setActiveView('patches');
+      }
     }).catch(console.error).finally(() => {
       if (!cancelled) setIsRepoLoading(false);
     });
@@ -708,27 +734,24 @@ export default function App() {
     if (n.kind.type === 'issue') {
       const issueId = n.kind.id;
       setIssueReturnView('inbox');
-      setActiveRid(n.repo);
       if (n.repo === activeRid) {
         setSelectedIssueInView(issueId);
         setActiveView('issues');
       } else {
-        setTimeout(() => {
-          setSelectedIssueInView(issueId);
-          setActiveView('issues');
-        }, 300);
+        pendingIssueId.current = issueId;
+        setActiveRid(n.repo);
       }
     } else if (n.kind.type === 'patch') {
       const patchId = n.kind.id;
       setPatchReturnView('inbox');
-      setActiveRid(n.repo);
-      const selectPatch = () => {
+      if (n.repo === activeRid) {
         const raw = rawPatches.find((p) => p.id === patchId);
         if (raw) setSelectedPatch({ id: raw.id, title: raw.title, author: raw.author, authorDid: raw.authorDid, state: raw.state, head: raw.head });
         setActiveView('patches');
-      };
-      if (n.repo === activeRid) selectPatch();
-      else setTimeout(selectPatch, 300);
+      } else {
+        pendingPatchId.current = patchId;
+        setActiveRid(n.repo);
+      }
     } else if (n.kind.type === 'tag') {
       const tagName = n.kind.name;
       const refName = `refs/tags/${tagName}`;
@@ -738,9 +761,12 @@ export default function App() {
           setFilesCommitOid(oid);
           setFilesInitialPath(null);
           setFilesRefLabel(tagName);
-          setActiveRid(n.repo);
-          if (n.repo === activeRid) setActiveView('files');
-          else setTimeout(() => setActiveView('files'), 300);
+          if (n.repo === activeRid) {
+            setActiveView('files');
+          } else {
+            pendingFilesView.current = true;
+            setActiveRid(n.repo);
+          }
         })
         .catch(console.error);
     }
