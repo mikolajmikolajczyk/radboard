@@ -14,7 +14,6 @@ import GlobalInboxPanel from './components/inbox/GlobalInboxPanel';
 import SettingsModal from './components/settings/SettingsModal';
 import WelcomeScreen from './components/welcome/WelcomeScreen';
 import AddRepoModal from './components/shared/AddRepoModal';
-import NewIssueModal from './components/issues/NewIssueModal';
 import ConfirmDialog from './components/shared/ConfirmDialog';
 import CloseIssueDialog from './components/shared/CloseIssueDialog';
 import type { IssueComment, IssueDetail as IssueDetailType, KanbanColumnData, PatchRef, PriorityLevel } from './types/kanban';
@@ -230,7 +229,7 @@ export default function App() {
   const [filesRefLabel, setFilesRefLabel] = useState<string | null>(null);
   const [isRepoLoading, setIsRepoLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [newIssueOpen, setNewIssueOpen] = useState(false);
+  const [issueCreating, setIssueCreating] = useState(false);
   const [pendingCloseIssue, setPendingCloseIssue] = useState<{ issueId: string; fromColId: string; source: 'kanban' | 'state' } | null>(null);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -1019,7 +1018,7 @@ function handleGlobalInboxOpen() {
           <main className={styles.main}>
             {isRepoLoading && <div className={styles.loadingBar}><div className={styles.loadingBarInner} /></div>}
             {activeView === 'kanban' && (
-              <KanbanBoard columns={columns} onChange={handleColumnsChange} onIssueMoved={handleIssueMoved} onPriorityChange={handlePriorityChange} onColumnsReorder={handleColumnsReorder} onIssueClick={handleIssueClick} onNewIssue={() => setNewIssueOpen(true)} canDrag={(issue) => canModify(issue.id)} columnColors={setup.columnColors?.[activeRid!] ?? {}} onColumnColorChange={handleColumnColorChange} onColumnRemove={handleColumnRemove} visibleColumns={setup.visibleColumns ?? columns.length} bannedDids={new Set((setup.bannedUsers ?? []).filter((b) => b.scope !== 'comments').map((b) => b.did))} onBanUser={handleBanUser} delegateDids={activeDelegateDids} myDid={myDid} />
+              <KanbanBoard columns={columns} onChange={handleColumnsChange} onIssueMoved={handleIssueMoved} onPriorityChange={handlePriorityChange} onColumnsReorder={handleColumnsReorder} onIssueClick={handleIssueClick} onNewIssue={() => { setIssueCreating(true); setIssueReturnView(activeView); setActiveView('issues'); setSelectedIssueInView(null); }} canDrag={(issue) => canModify(issue.id)} columnColors={setup.columnColors?.[activeRid!] ?? {}} onColumnColorChange={handleColumnColorChange} onColumnRemove={handleColumnRemove} visibleColumns={setup.visibleColumns ?? columns.length} bannedDids={new Set((setup.bannedUsers ?? []).filter((b) => b.scope !== 'comments').map((b) => b.did))} onBanUser={handleBanUser} delegateDids={activeDelegateDids} myDid={myDid} />
             )}
             {activeView === 'issues' && (
               <IssuesView
@@ -1031,6 +1030,8 @@ function handleGlobalInboxOpen() {
                   setActiveView(issueReturnView);
                 } : undefined}
                 returnLabel={issueReturnView === 'kanban' ? 'Back to board' : issueReturnView ? `Back to ${issueReturnView}` : undefined}
+                startCreating={issueCreating}
+                onCreatingChange={setIssueCreating}
               />
             )}
             {(activeView === 'patches' || activeView === 'patch-files') && (
@@ -1115,13 +1116,6 @@ function handleGlobalInboxOpen() {
           </main>
 
           <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onToggleTheme={toggleTheme} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} canZoomIn={canZoomIn} canZoomOut={canZoomOut} visibleColumns={setup.visibleColumns ?? columns.length} onVisibleColumnsChange={handleVisibleColumnsChange} explorerUrl={setup.explorerUrl ?? 'https://app.radicle.xyz'} onExplorerUrlChange={handleExplorerUrlChange} seedNode={setup.seedNode ?? 'seed.radicle.xyz'} onSeedNodeChange={handleSeedNodeChange} rids={setup.rids} repoNames={repoNames} localRepoPaths={setup.localRepoPaths ?? {}} onLocalPathChange={handleLocalPathChange} preferredEditor={setup.preferredEditor ?? ''} onEditorChange={handleEditorChange} inboxPageSize={setup.inboxPageSize ?? 50} onInboxPageSizeChange={handleInboxPageSizeChange} />
-          <NewIssueModal
-            open={newIssueOpen}
-            rid={activeRid!}
-            labelSuggestions={labelSuggestions}
-            onCreated={() => { setNewIssueOpen(false); handleRefresh(); }}
-            onClose={() => setNewIssueOpen(false)}
-          />
           <AddRepoModal
             open={addRepoOpen}
             existingRids={setup!.rids}

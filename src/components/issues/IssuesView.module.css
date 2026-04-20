@@ -111,9 +111,29 @@
 }
 
 
+.newIssueBtn {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 10px;
+  border: 1px solid rgba(93, 228, 199, 0.3);
+  border-radius: 4px;
+  background: rgba(93, 228, 199, 0.08);
+  color: #5de4c7;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+
+.newIssueBtn:hover {
+  background: rgba(93, 228, 199, 0.18);
+  border-color: rgba(93, 228, 199, 0.5);
+}
+
 .labelDropdownWrap {
   position: relative;
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .labelDropdown {

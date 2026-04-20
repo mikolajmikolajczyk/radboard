@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import IssueDetail from './IssueDetail';
+import NewIssueForm from './NewIssueForm';
 import type { IssueDetail as IssueDetailType } from '../../types/kanban';
 import { useRepo } from '../../contexts/RepoContext';
 import { useActions } from '../../contexts/ActionsContext';
@@ -22,6 +23,8 @@ interface Props {
   onSelectIssue: (id: string | null) => void;
   onReturn?: () => void;
   returnLabel?: string;
+  startCreating?: boolean;
+  onCreatingChange?: (creating: boolean) => void;
 }
 
 export default function IssuesView({
@@ -30,6 +33,8 @@ export default function IssuesView({
   onSelectIssue,
   onReturn,
   returnLabel,
+  startCreating,
+  onCreatingChange,
 }: Props) {
   const { columnColors, myDid, delegateDids } = useRepo();
   const { onPriorityChange } = useActions();
@@ -39,6 +44,15 @@ export default function IssuesView({
   const [labelFilters, setLabelFilters] = useState<Map<string, 'or' | 'and'>>(new Map());
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
   const [issueSidebarWidth, setIssueSidebarWidth] = useState(210);
+  const [creatingNew, _setCreatingNew] = useState(!!startCreating);
+  function setCreatingNew(v: boolean) {
+    _setCreatingNew(v);
+    onCreatingChange?.(v);
+  }
+
+  useEffect(() => {
+    if (startCreating) _setCreatingNew(true);
+  }, [startCreating]);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
 
   const { width: listWidth, dividerProps, isDragging } = useResizableDivider({
@@ -173,6 +187,11 @@ export default function IssuesView({
               </FilterChip>
             </span>
           ))}
+          <button
+            className={styles.newIssueBtn}
+            onClick={() => { setCreatingNew(true); onSelectIssue(null); }}
+            title="Create new issue"
+          >+ New issue</button>
           {allLabels.length > 0 && (
             <div className={styles.labelDropdownWrap} ref={labelDropdownRef}>
               <FilterChip
@@ -237,7 +256,7 @@ export default function IssuesView({
                 key={issue.id}
                 data-id={issue.id}
                 className={`${styles.row} ${selectedIssueId === issue.id ? styles.rowActive : ''}`}
-                onClick={() => onSelectIssue(issue.id)}
+                onClick={() => { setCreatingNew(false); onSelectIssue(issue.id); }}
               >
                 {(() => {
                   const colId = issue.status === 'closed' || issue.status === 'solved'
@@ -286,9 +305,14 @@ export default function IssuesView({
       {/* Divider */}
       <div className={styles.divider} {...dividerProps} />
 
-      {/* Right: issue detail */}
+      {/* Right: issue detail or new issue form */}
       <div className={styles.detailPanel}>
-        {selectedIssue ? (
+        {creatingNew ? (
+          <NewIssueForm
+            onCreated={(issueId) => { setCreatingNew(false); onSelectIssue(issueId); }}
+            onCancel={() => setCreatingNew(false)}
+          />
+        ) : selectedIssue ? (
           <IssueDetail
             key={selectedIssue.id}
             issue={selectedIssue}
