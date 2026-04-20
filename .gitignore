@@ -26,7 +26,6 @@ target/
 
 # Claude Code project-local settings
 .claude/
-CLAUDE.md
 plans/
 
 # Editor directories and files

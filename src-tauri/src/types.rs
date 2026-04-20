@@ -22,6 +22,10 @@ pub struct LocalConfig {
     pub preferred_editor: Option<String>,
     #[serde(default)]
     pub inbox_page_size: Option<u32>,
+    #[serde(default)]
+    pub last_active_rid: Option<String>,
+    #[serde(default)]
+    pub last_active_view: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

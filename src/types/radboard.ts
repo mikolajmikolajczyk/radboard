@@ -197,4 +197,8 @@ export interface AppSetup {
   preferredEditor?: string;
   /** number of most-recent notifications to load per repo; default 50 */
   inboxPageSize?: number;
+  /** last active repo RID — restored on startup */
+  lastActiveRid?: string;
+  /** last active view tab — restored on startup */
+  lastActiveView?: string;
 }

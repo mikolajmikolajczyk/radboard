@@ -251,7 +251,14 @@ export default function App() {
       .then((saved) => {
         if (saved) {
           setSetup(saved);
-          setActiveRid(saved.rids[0] ?? null);
+          const rid = (saved.lastActiveRid && saved.rids.includes(saved.lastActiveRid))
+            ? saved.lastActiveRid
+            : saved.rids[0] ?? null;
+          setActiveRid(rid);
+          const validViews: MainView[] = ['kanban', 'issues', 'patches', 'worktrees', 'files', 'inbox'];
+          if (saved.lastActiveView && validViews.includes(saved.lastActiveView as MainView)) {
+            setActiveView(saved.lastActiveView as MainView);
+          }
         }
       })
       .finally(() => setConfigLoaded(true));
@@ -259,6 +266,15 @@ export default function App() {
       .then((id) => setMyDid(id?.did ?? null))
       .catch(console.error);
   }, []);
+
+  // Persist last active repo + view to config
+  useEffect(() => {
+    if (!setup || !activeRid) return;
+    if (setup.lastActiveRid === activeRid && setup.lastActiveView === activeView) return;
+    const updated = { ...setup, lastActiveRid: activeRid, lastActiveView: activeView };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }, [activeRid, activeView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch repo names whenever setup changes
   useEffect(() => {
