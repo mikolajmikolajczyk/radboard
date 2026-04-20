@@ -234,7 +234,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
     try {
       const path = await invoke<string>('create_patch_worktree', {
         localPath: localRepoPath,
-        branchName: worktreeBranchName(issue.id.slice(0, 7)),
+        branchName: worktreeBranchName(issue.id.slice(0, 7), localRepoPath),
       });
       if (preferredEditor) {
         try {

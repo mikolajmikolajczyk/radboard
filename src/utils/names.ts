@@ -4,6 +4,8 @@ export function randomWord(): string {
   return WORDS[Math.floor(Math.random() * WORDS.length)];
 }
 
-export function worktreeBranchName(issuePrefix: string): string {
-  return `${issuePrefix}-${randomWord()}`;
+export function worktreeBranchName(issuePrefix: string, repoPath?: string | null, patchId?: string): string {
+  const repoName = repoPath ? repoPath.replace(/\/+$/, '').split('/').pop() ?? randomWord() : randomWord();
+  const base = `${repoName}-${issuePrefix}`;
+  return patchId ? `${base}-${patchId.slice(0, 4)}` : base;
 }

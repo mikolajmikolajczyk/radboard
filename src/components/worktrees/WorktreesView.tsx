@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import ConfirmDialog from '../shared/ConfirmDialog';
+import PatchFromWorktreeModal from '../patches/PatchFromWorktreeModal';
 import { Button } from '../../ui';
 import type { WorktreeInfo, FileStatus } from '../../types/radboard';
 import styles from './WorktreesView.module.css';
@@ -33,6 +34,14 @@ export default function WorktreesView({ localRepoPath, preferredEditor, onFindIs
   const [dirtyWarning, setDirtyWarning] = useState(false);
   const [confirmUpdate, setConfirmUpdate] = useState<{ wt: WorktreeInfo; commitOid: string } | null>(null);
   const [dirtyUpdateWarning, setDirtyUpdateWarning] = useState(false);
+  const [patchModal, setPatchModal] = useState<{
+    worktreePath: string;
+    mode: 'create' | 'update';
+    issueId?: string;
+    issueTitle?: string;
+    patchId?: string;
+    patchTitle?: string;
+  } | null>(null);
 
   const refresh = useCallback(() => {
     if (!localRepoPath) return;
@@ -128,6 +137,8 @@ export default function WorktreesView({ localRepoPath, preferredEditor, onFindIs
             const issue = prefix && onFindIssue ? onFindIssue(prefix) : null;
             const patches = prefix && onFindPatches ? onFindPatches(prefix, wt.head) : [];
             const outdatedPatch = patches.find((p) => p.head !== wt.head);
+            const openPatch = patches.find((p) => p.state === 'open' || p.state === 'draft');
+            const patchMode = openPatch ? 'update' : 'create';
             return (
               <div key={wt.path} className={styles.row}>
                 <span className={styles.branch}>{wt.branch || '(detached)'}</span>
@@ -176,6 +187,20 @@ export default function WorktreesView({ localRepoPath, preferredEditor, onFindIs
                       Update
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    onClick={() => setPatchModal({
+                      worktreePath: wt.path,
+                      mode: patchMode,
+                      issueId: issue?.id,
+                      issueTitle: issue?.title,
+                      patchId: openPatch?.id,
+                      patchTitle: openPatch?.title,
+                    })}
+                    title={patchMode === 'create' ? 'Create patch from worktree' : 'Update patch from worktree'}
+                  >
+                    {patchMode === 'create' ? '⎇ patch' : '⎇ update'}
+                  </Button>
                   <Button size="sm" variant="danger" onClick={() => handleRemoveClick(wt)} title="Remove worktree">
                     Remove
                   </Button>
@@ -206,6 +231,23 @@ export default function WorktreesView({ localRepoPath, preferredEditor, onFindIs
         onConfirm={confirmUpdateWorktree}
         onCancel={() => { setConfirmUpdate(null); setDirtyUpdateWarning(false); }}
       />
+      {patchModal && (
+        <PatchFromWorktreeModal
+          open
+          worktreePath={patchModal.worktreePath}
+          issueId={patchModal.issueId}
+          issueTitle={patchModal.issueTitle}
+          mode={patchModal.mode}
+          patchId={patchModal.patchId}
+          patchTitle={patchModal.patchTitle}
+          preferredEditor={preferredEditor}
+          onSuccess={() => {
+            setPatchModal(null);
+            refresh();
+          }}
+          onClose={() => setPatchModal(null)}
+        />
+      )}
     </div>
   );
 }

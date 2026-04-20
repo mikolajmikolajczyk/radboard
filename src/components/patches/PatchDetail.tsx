@@ -11,7 +11,7 @@ import { RevisionPicker } from './RevisionPicker';
 import { ReviewSection } from './ReviewSection';
 import styles from './PatchDetail.module.css';
 import { Badge } from '../../ui';
-import { randomWord } from '../../utils/names';
+import { worktreeBranchName } from '../../utils/names';
 import { useRepo } from '../../contexts/RepoContext';
 import { useActions } from '../../contexts/ActionsContext';
 
@@ -244,7 +244,7 @@ export default function PatchDetail({
   function openCheckout() {
     const issuePrefixFromTitle = patch.title.match(ISSUE_PREFIX_RE)?.[1] ?? null;
     const issuePrefix = issueId ? issueId.slice(0, 7) : (issuePrefixFromTitle ?? patch.id.slice(0, 7));
-    const branch = `${issuePrefix}-${randomWord()}`;
+    const branch = worktreeBranchName(issuePrefix, localRepoPath, patch.id);
     setCheckoutBranch(branch);
     setCheckoutPath(localRepoPath ? `${localRepoPath}/../${branch}` : '');
     setCheckoutError(null);

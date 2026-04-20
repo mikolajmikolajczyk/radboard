@@ -16,8 +16,8 @@ import styles from './PatchFromWorktreeModal.module.css';
 interface Props {
   open: boolean;
   worktreePath: string;
-  issueId: string;
-  issueTitle: string;
+  issueId?: string;
+  issueTitle?: string;
   mode: 'create' | 'update';
   patchId?: string;
   patchTitle?: string;
@@ -107,7 +107,7 @@ export default function PatchFromWorktreeModal({
     setSelectedFilePath(null);
 
     if (mode === 'create') {
-      setPatchTitleInput(issueTitle);
+      setPatchTitleInput(issueTitle ?? '');
       setPatchDesc('');
     }
 
@@ -331,7 +331,7 @@ export default function PatchFromWorktreeModal({
         if (!patchTitleInput.trim()) return;
         await invoke('push_create_patch', {
           worktreePath,
-          patchTitle: `[${issueId.slice(0, 7)}] ${patchTitleInput.trim()}`,
+          patchTitle: issueId ? `[${issueId.slice(0, 7)}] ${patchTitleInput.trim()}` : patchTitleInput.trim(),
           patchDescription: patchDesc.trim(),
         });
       } else {
@@ -385,7 +385,7 @@ export default function PatchFromWorktreeModal({
                 <label className={styles.label}>
                   Patch title
                   <div className={styles.titleRow}>
-                    <span className={styles.titlePrefix}>[{issueId.slice(0, 7)}]</span>
+                    {issueId && <span className={styles.titlePrefix}>[{issueId.slice(0, 7)}]</span>}
                     <input
                       className={styles.titleInput}
                       value={patchTitleInput}
