@@ -9,6 +9,7 @@ import PatchesView from './components/patches/PatchesView';
 import WorktreesView from './components/worktrees/WorktreesView';
 import FilesView from './components/files/FilesView';
 import PatchFilesView from './components/patches/PatchFilesView';
+import MilestonesView from './components/milestones/MilestonesView';
 import InboxView from './components/inbox/InboxView';
 import GlobalInboxPanel from './components/inbox/GlobalInboxPanel';
 import SettingsModal from './components/settings/SettingsModal';
@@ -26,7 +27,7 @@ import { ActionsProvider } from './contexts/ActionsContext';
 import { TerminalProvider, useTerminal } from './contexts/TerminalContext';
 import TerminalPanel from './components/terminal/TerminalPanel';
 
-type MainView = 'kanban' | 'issues' | 'patches' | 'worktrees' | 'files' | 'inbox' | 'patch-files';
+type MainView = 'kanban' | 'issues' | 'patches' | 'milestones' | 'worktrees' | 'files' | 'inbox' | 'patch-files';
 
 interface PatchFilesCtx {
   fileDiffs: FileDiff[];
@@ -57,12 +58,22 @@ function titleFromId(id: string): string {
   return id.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
 }
 
+/** Reconstruct full label list from an IssueDetail, re-adding milestone labels that were stripped for display. */
+function allLabels(issue: IssueDetailType, milestonePrefix: string): string[] {
+  const labels = issue.labels.map((l) => l.text);
+  if (issue.milestones) {
+    for (const ms of issue.milestones) labels.push(`${milestonePrefix}${ms}`);
+  }
+  return labels;
+}
+
 function issuesToColumns(
   issues: RawIssueData[],
   rid: string,
   columnOrder: string[],
   bannedUsers: BannedEntry[] = [],
   rawPatches: RawPatchData[] = [],
+  milestonePrefix: string = 'milestone:',
 ): [KanbanColumnData[], Map<string, IssueDetailType>] {
   const bannedIssueDids = new Set(
     bannedUsers.filter((b) => b.scope === 'all' || b.scope === 'issues').map((b) => b.did),
@@ -134,14 +145,18 @@ function issuesToColumns(
         ? (parsedPriority as PriorityLevel)
         : undefined;
 
+    const milestoneLabels = raw.labels.filter((l) => l.startsWith(milestonePrefix));
+    const milestones = milestoneLabels.map((l) => l.slice(milestonePrefix.length)).filter(Boolean);
+
     const card = {
       id: raw.id,
       author: raw.author,
       authorDid: raw.authorDid,
       title: raw.title,
       labels: raw.labels
-        .filter((l) => !l.startsWith('priority:'))
+        .filter((l) => !l.startsWith('priority:') && !l.startsWith(milestonePrefix))
         .map((l) => ({ text: l, variant: l })),
+      milestones: milestones.length > 0 ? milestones : undefined,
       indicator: Object.keys(indicator).length > 0 ? indicator : undefined,
       ...(raw.state === 'solved' && { solved: true }),
       priority,
@@ -254,7 +269,7 @@ export default function App() {
             ? saved.lastActiveRid
             : saved.rids[0] ?? null;
           setActiveRid(rid);
-          const validViews: MainView[] = ['kanban', 'issues', 'patches', 'worktrees', 'files', 'inbox'];
+          const validViews: MainView[] = ['kanban', 'issues', 'patches', 'milestones', 'worktrees', 'files', 'inbox'];
           if (saved.lastActiveView && validViews.includes(saved.lastActiveView as MainView)) {
             setActiveView(saved.lastActiveView as MainView);
           }
@@ -374,7 +389,7 @@ export default function App() {
       ]).then(([issues, patches]) => {
         setRawPatches(patches);
         const columnOrder = setup.columnOrder?.[rid] ?? [];
-        const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches);
+        const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
         setColumns(cols);
         setIssueDetails(details);
       }).catch(console.error);
@@ -402,7 +417,7 @@ export default function App() {
     issuesPromise.then((issues) => {
       if (cancelled) return;
       const columnOrder = setup.columnOrder?.[rid] ?? [];
-      const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, []);
+      const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, [], setup.milestonePrefix ?? 'milestone:');
       startTransition(() => {
         setColumns(cols);
         setIssueDetails(details);
@@ -420,7 +435,7 @@ export default function App() {
     Promise.all([issuesPromise, patchesPromise]).then(([issues, patches]) => {
       if (cancelled) return;
       const columnOrder = setup.columnOrder?.[rid] ?? [];
-      const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches);
+      const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
       startTransition(() => {
         setRawPatches(patches);
         setColumns(cols);
@@ -490,6 +505,13 @@ export default function App() {
     invoke('save_config', { config: updated }).catch(console.error);
   }
 
+  function handleMilestonePrefixChange(prefix: string) {
+    if (!setup) return;
+    const updated = { ...setup, milestonePrefix: prefix };
+    setSetup(updated);
+    invoke('save_config', { config: updated }).catch(console.error);
+  }
+
   function handleColumnsChange(newCols: KanbanColumnData[]) {
     if (!setup || !activeRid) return;
     setColumns(newCols);
@@ -511,7 +533,8 @@ export default function App() {
     if (!activeRid || !setup) return;
     const issue = issueDetails.get(issueId);
     if (!issue) return;
-    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:') && !l.startsWith('priority:'));
+    const prefix = setup.milestonePrefix ?? 'milestone:';
+    const otherLabels = allLabels(issue, prefix).filter((l) => !l.startsWith('state:') && !l.startsWith('priority:'));
 
     const STATIC = ['open', 'closed'];
     const newLabels = STATIC.includes(toColId)
@@ -528,7 +551,7 @@ export default function App() {
       ]))
       .then(([issues, patches]) => {
         setRawPatches(patches);
-        const [cols, details] = issuesToColumns(issues, rid, columnOrder, bannedUsers, patches);
+        const [cols, details] = issuesToColumns(issues, rid, columnOrder, bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
         setColumns(cols);
         setIssueDetails(details);
       })
@@ -539,7 +562,8 @@ export default function App() {
     if (!activeRid || !setup) return;
     const issue = issueDetails.get(issueId);
     if (!issue) return;
-    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('priority:'));
+    const prefix = setup.milestonePrefix ?? 'milestone:';
+    const otherLabels = allLabels(issue, prefix).filter((l) => !l.startsWith('priority:'));
     const newLabels = priority ? [...otherLabels, `priority:${priority}`] : otherLabels;
 
     const rid = activeRid;
@@ -552,7 +576,7 @@ export default function App() {
       ]))
       .then(([issues, patches]) => {
         setRawPatches(patches);
-        const [cols, details] = issuesToColumns(issues, rid, columnOrder, bannedUsers, patches);
+        const [cols, details] = issuesToColumns(issues, rid, columnOrder, bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
         setColumns(cols);
         setIssueDetails(details);
       })
@@ -590,7 +614,8 @@ export default function App() {
       for (const issue of col.issues) {
         const detail = issueDetails.get(issue.id);
         if (!detail) continue;
-        const newLabels = detail.labels.map((l) => l.text).filter((l) => l !== `state:${colId}`);
+        const prefix = setup.milestonePrefix ?? 'milestone:';
+        const newLabels = allLabels(detail, prefix).filter((l) => l !== `state:${colId}`);
         invoke('label_issue', { rid, issueId: issue.id, labels: newLabels }).catch(console.error);
       }
     }
@@ -644,7 +669,7 @@ export default function App() {
     ]).then(([issues, patches]) => {
       setRawPatches(patches);
       const columnOrder = setup.columnOrder?.[activeRid] ?? [];
-      const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers, patches);
+      const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
       setColumns(cols);
       setIssueDetails(details);
     }).catch(console.error);
@@ -679,7 +704,8 @@ export default function App() {
     if (!activeRid || !setup) return;
     const issue = issueDetails.get(issueId);
     if (!issue) return;
-    const otherLabels = issue.labels.map((l) => l.text).filter((l) => !l.startsWith('state:') && !l.startsWith('priority:'));
+    const prefix = setup.milestonePrefix ?? 'milestone:';
+    const otherLabels = allLabels(issue, prefix).filter((l) => !l.startsWith('state:') && !l.startsWith('priority:'));
 
     const STATIC = ['open', 'closed'];
     const newLabels = STATIC.includes(newColumnId) ? otherLabels : [...otherLabels, `state:${newColumnId}`];
@@ -692,7 +718,7 @@ export default function App() {
       .then(([issues, patches]) => {
         setRawPatches(patches);
         const columnOrder = setup.columnOrder?.[activeRid] ?? [];
-        const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers ?? [], patches);
+        const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers ?? [], patches, setup.milestonePrefix ?? 'milestone:');
         setColumns(cols);
         setIssueDetails(details);
       })
@@ -903,6 +929,11 @@ function handleGlobalInboxOpen() {
     [issueDetails],
   );
 
+  const milestoneSuggestions = useMemo(
+    () => [...new Set([...issueDetails.values()].flatMap((i) => i.milestones ?? []))].sort(),
+    [issueDetails],
+  );
+
   const repoCtxValue = useMemo(() => ({
     rid: activeRid ?? '',
     myDid,
@@ -915,8 +946,10 @@ function handleGlobalInboxOpen() {
     columns: columns.map((c) => ({ id: c.id, title: c.title })),
     columnColors: setup?.columnColors?.[activeRid ?? ''] ?? {},
     labelSuggestions,
+    milestoneSuggestions,
+    milestonePrefix: setup?.milestonePrefix ?? 'milestone:',
     bannedUsers: setup?.bannedUsers ?? [],
-  }), [activeRid, myDid, repoDelegateDids, repoDefaultBranches, setup, columns, labelSuggestions]);
+  }), [activeRid, myDid, repoDelegateDids, repoDefaultBranches, setup, columns, labelSuggestions, milestoneSuggestions]);
 
   const actionsCtxValue = useMemo(() => ({
     onRefresh: handleRefresh,
@@ -1002,7 +1035,7 @@ function handleGlobalInboxOpen() {
             }}
           >
             <TabsList className={styles.viewSwitcher}>
-              {(['inbox', 'kanban', 'issues', 'patches', 'worktrees', 'files'] as const).map((v) => (
+              {(['inbox', 'kanban', 'issues', 'patches', 'milestones', 'worktrees', 'files'] as const).map((v) => (
                 <TabsTrigger
                   key={v}
                   value={v}
@@ -1105,6 +1138,13 @@ function handleGlobalInboxOpen() {
                 defaultBranch={repoDefaultBranches.get(activeRid)}
               />
             )}
+            {activeView === 'milestones' && (
+              <MilestonesView
+                issueDetails={issueDetails}
+                milestonePrefix={setup.milestonePrefix ?? 'milestone:'}
+                onSelectIssue={(id) => { setSelectedIssueInView(id); setIssueReturnView('milestones'); setActiveView('issues'); }}
+              />
+            )}
             {activeView === 'inbox' && (
               <InboxView
                 notifications={notifications}
@@ -1115,7 +1155,7 @@ function handleGlobalInboxOpen() {
             )}
           </main>
 
-          <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onToggleTheme={toggleTheme} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} canZoomIn={canZoomIn} canZoomOut={canZoomOut} visibleColumns={setup.visibleColumns ?? columns.length} onVisibleColumnsChange={handleVisibleColumnsChange} explorerUrl={setup.explorerUrl ?? 'https://app.radicle.xyz'} onExplorerUrlChange={handleExplorerUrlChange} seedNode={setup.seedNode ?? 'seed.radicle.xyz'} onSeedNodeChange={handleSeedNodeChange} rids={setup.rids} repoNames={repoNames} localRepoPaths={setup.localRepoPaths ?? {}} onLocalPathChange={handleLocalPathChange} preferredEditor={setup.preferredEditor ?? ''} onEditorChange={handleEditorChange} inboxPageSize={setup.inboxPageSize ?? 50} onInboxPageSizeChange={handleInboxPageSizeChange} />
+          <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onToggleTheme={toggleTheme} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} canZoomIn={canZoomIn} canZoomOut={canZoomOut} visibleColumns={setup.visibleColumns ?? columns.length} onVisibleColumnsChange={handleVisibleColumnsChange} explorerUrl={setup.explorerUrl ?? 'https://app.radicle.xyz'} onExplorerUrlChange={handleExplorerUrlChange} seedNode={setup.seedNode ?? 'seed.radicle.xyz'} onSeedNodeChange={handleSeedNodeChange} rids={setup.rids} repoNames={repoNames} localRepoPaths={setup.localRepoPaths ?? {}} onLocalPathChange={handleLocalPathChange} preferredEditor={setup.preferredEditor ?? ''} onEditorChange={handleEditorChange} inboxPageSize={setup.inboxPageSize ?? 50} onInboxPageSizeChange={handleInboxPageSizeChange} milestonePrefix={setup.milestonePrefix ?? 'milestone:'} onMilestonePrefixChange={handleMilestonePrefixChange} />
           <AddRepoModal
             open={addRepoOpen}
             existingRids={setup!.rids}

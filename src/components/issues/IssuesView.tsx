@@ -6,6 +6,7 @@ import { useRepo } from '../../contexts/RepoContext';
 import { useActions } from '../../contexts/ActionsContext';
 import { FilterChip, useResizableDivider, useOutsideClick } from '../../ui';
 import { PrioritySelector } from './PrioritySelector';
+import { formatMilestoneDisplay } from '../milestones/MilestonesView';
 import styles from './IssuesView.module.css';
 
 type Filter = 'all' | 'open' | 'closed' | string; // string covers dynamic state: labels
@@ -287,6 +288,13 @@ export default function IssuesView({
                   <span className={styles.prioSpacer} />
                 )}
                 <span className={styles.rowTitle}>{issue.title}</span>
+                {issue.milestones && issue.milestones.length > 0 && (
+                  <span className={styles.rowLabels}>
+                    {issue.milestones.map((ms) => (
+                      <span key={ms} className={styles.rowMilestone}>{formatMilestoneDisplay(ms)}</span>
+                    ))}
+                  </span>
+                )}
                 {issue.labels.filter((l) => !l.text.startsWith('state:')).length > 0 && (
                   <span className={styles.rowLabels}>
                     {issue.labels.filter((l) => !l.text.startsWith('state:')).map((l) => (

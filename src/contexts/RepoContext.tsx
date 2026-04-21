@@ -13,6 +13,8 @@ interface RepoContextValue {
   columns: { id: string; title: string }[];
   columnColors: Record<string, string>;
   labelSuggestions: string[];
+  milestoneSuggestions: string[];
+  milestonePrefix: string;
   bannedUsers: BannedEntry[];
 }
 

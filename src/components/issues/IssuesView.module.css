@@ -322,6 +322,16 @@
   color: #818cf8;
 }
 
+.rowMilestone {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(167, 139, 250, 0.10);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.20);
+}
+
 .author {
   font-size: 10px;
   color: var(--text-6);

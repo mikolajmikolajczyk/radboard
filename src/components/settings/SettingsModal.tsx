@@ -33,6 +33,8 @@ interface Props {
   onEditorChange: (cmd: string) => void;
   inboxPageSize: number;
   onInboxPageSizeChange: (n: number) => void;
+  milestonePrefix: string;
+  onMilestonePrefixChange: (prefix: string) => void;
 }
 
 // ── Nav ────────────────────────────────────────────────────────────────────────
@@ -126,11 +128,13 @@ function AppearancePage({ theme, onToggleTheme, zoom, zoomIn, zoomOut, resetZoom
 
 // ──
 
-function BoardPage({ visibleColumns, onVisibleColumnsChange, inboxPageSize, onInboxPageSizeChange }: {
+function BoardPage({ visibleColumns, onVisibleColumnsChange, inboxPageSize, onInboxPageSizeChange, milestonePrefix, onMilestonePrefixChange }: {
   visibleColumns: number;
   onVisibleColumnsChange: (n: number) => void;
   inboxPageSize: number;
   onInboxPageSizeChange: (n: number) => void;
+  milestonePrefix: string;
+  onMilestonePrefixChange: (prefix: string) => void;
 }) {
   return (
     <div className={styles.page}>
@@ -176,6 +180,21 @@ function BoardPage({ visibleColumns, onVisibleColumnsChange, inboxPageSize, onIn
             aria-label="Increase inbox page size"
           >+</button>
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionLabel}>Milestone label prefix</div>
+        <div className={styles.hint}>
+          Issues with labels starting with this prefix are grouped into milestones.
+        </div>
+        <Input
+          className={styles.inputMono}
+          type="text"
+          value={milestonePrefix}
+          onChange={(e) => onMilestonePrefixChange(e.target.value)}
+          spellCheck={false}
+          placeholder="milestone:"
+        />
       </section>
     </div>
   );
@@ -468,7 +487,7 @@ function ReposPage({ rids, repoNames, localRepoPaths, onLocalPathChange, preferr
 
 // ── Shell ──────────────────────────────────────────────────────────────────────
 
-export default function SettingsModal({ open, onClose, theme, onToggleTheme, zoom, zoomIn, zoomOut, resetZoom, canZoomIn, canZoomOut, visibleColumns, onVisibleColumnsChange, explorerUrl, onExplorerUrlChange, seedNode, onSeedNodeChange, rids, repoNames, localRepoPaths, onLocalPathChange, preferredEditor, onEditorChange, inboxPageSize, onInboxPageSizeChange }: Props) {
+export default function SettingsModal({ open, onClose, theme, onToggleTheme, zoom, zoomIn, zoomOut, resetZoom, canZoomIn, canZoomOut, visibleColumns, onVisibleColumnsChange, explorerUrl, onExplorerUrlChange, seedNode, onSeedNodeChange, rids, repoNames, localRepoPaths, onLocalPathChange, preferredEditor, onEditorChange, inboxPageSize, onInboxPageSizeChange, milestonePrefix, onMilestonePrefixChange }: Props) {
   const { bannedUsers } = useRepo();
   const { onBanUser, onUnbanUser } = useActions();
   const [page, setPage] = useState<Page>('appearance');
@@ -496,7 +515,7 @@ export default function SettingsModal({ open, onClose, theme, onToggleTheme, zoo
 
         <div className={styles.content}>
           {page === 'appearance' && <AppearancePage theme={theme} onToggleTheme={onToggleTheme} zoom={zoom} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} canZoomIn={canZoomIn} canZoomOut={canZoomOut} />}
-          {page === 'board'      && <BoardPage visibleColumns={visibleColumns} onVisibleColumnsChange={onVisibleColumnsChange} inboxPageSize={inboxPageSize} onInboxPageSizeChange={onInboxPageSizeChange} />}
+          {page === 'board'      && <BoardPage visibleColumns={visibleColumns} onVisibleColumnsChange={onVisibleColumnsChange} inboxPageSize={inboxPageSize} onInboxPageSizeChange={onInboxPageSizeChange} milestonePrefix={milestonePrefix} onMilestonePrefixChange={onMilestonePrefixChange} />}
           {page === 'explorer'   && <ExplorerPage explorerUrl={explorerUrl} onExplorerUrlChange={onExplorerUrlChange} seedNode={seedNode} onSeedNodeChange={onSeedNodeChange} />}
           {page === 'repos'      && <ReposPage rids={rids} repoNames={repoNames} localRepoPaths={localRepoPaths} onLocalPathChange={onLocalPathChange} preferredEditor={preferredEditor} onEditorChange={onEditorChange} />}
           {page === 'banned'     && <BannedPage bannedUsers={bannedUsers} onBanUser={onBanUser} onUnbanUser={onUnbanUser} />}

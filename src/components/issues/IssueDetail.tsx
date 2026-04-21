@@ -16,6 +16,7 @@ import { CommentThread } from '../shared/CommentThread';
 import { LabelEditor } from './LabelEditor';
 import { StateSelector } from './StateSelector';
 import { PrioritySelector } from './PrioritySelector';
+import { MilestonePicker } from '../milestones/MilestonePicker';
 import { Badge, Button, Textarea } from '../../ui';
 import { GitBranchPicker } from '../worktrees/GitBranchPicker';
 import { useRepo } from '../../contexts/RepoContext';
@@ -44,7 +45,7 @@ function mapRawComment(raw: RawCommentData): IssueComment {
 
 
 export default function IssueDetail({ issue, currentColumnId, onClose, embedded = false, sidebarWidth: sidebarWidthProp, onSidebarWidthChange }: Props) {
-  const { myDid, delegateDids, bannedUsers, explorerUrl, seedNode, localRepoPath, preferredEditor } = useRepo();
+  const { myDid, delegateDids, bannedUsers, explorerUrl, seedNode, localRepoPath, preferredEditor, milestoneSuggestions, milestonePrefix } = useRepo();
   const { onRefresh: actionsOnRefresh, onBanUser, onStateChange, onPriorityChange, onOpenPatch, onCommentsLoaded } = useActions();
 
   // ACL: Edit/Lifecycle → issue author only; Label → delegates only
@@ -511,6 +512,25 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                     ) : (
                       <span className={`${styles.sidebarFieldValue} ${styles.sidebarEmpty}`}>none</span>
                     )}
+                  </div>
+
+                  <div className={styles.sidebarField}>
+                    <span className={styles.sidebarFieldLabel}>milestone</span>
+                    <MilestonePicker
+                      current={issue.milestones ?? []}
+                      suggestions={milestoneSuggestions}
+                      readOnly={!isDelegate && !isAuthor}
+                      onChange={async (newMilestones) => {
+                        try {
+                          const otherLabels = issue.labels.map((l) => l.text);
+                          const msLabels = newMilestones.map((ms) => `${milestonePrefix}${ms}`);
+                          await invoke('label_issue', { rid: issue.rid, issueId: issue.id, labels: [...otherLabels, ...msLabels] });
+                          actionsOnRefresh();
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }}
+                    />
                   </div>
                 </div>
 

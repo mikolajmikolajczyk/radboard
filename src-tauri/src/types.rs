@@ -26,6 +26,8 @@ pub struct LocalConfig {
     pub last_active_rid: Option<String>,
     #[serde(default)]
     pub last_active_view: Option<String>,
+    #[serde(default)]
+    pub milestone_prefix: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

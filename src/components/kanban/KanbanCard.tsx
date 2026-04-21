@@ -1,4 +1,5 @@
 import type { Issue, IssueLabel, IssueIndicator } from '../../types/kanban';
+import { formatMilestoneDisplay } from '../milestones/MilestonesView';
 import styles from './KanbanCard.module.css';
 
 interface Props {
@@ -78,6 +79,9 @@ export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, 
       <p className={styles.title}>{issue.title}</p>
 
       <div className={styles.footer}>
+        {issue.milestones?.map((ms) => (
+          <span key={ms} className={styles.milestone}>{formatMilestoneDisplay(ms)}</span>
+        ))}
         {issue.labels.map((label) => (
           <Label key={label.text} label={label} />
         ))}

@@ -117,6 +117,17 @@
 .labelInconsistency { background: rgba(248, 113, 113, 0.10); color: #f87171; }
 .labelDefault     { background: rgba(99, 115, 210, 0.12); color: #818cf8; }
 
+/* Milestone badge */
+.milestone {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(167, 139, 250, 0.10);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.20);
+}
+
 /* Indicator */
 .indicator {
   display: flex;

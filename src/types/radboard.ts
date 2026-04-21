@@ -201,4 +201,6 @@ export interface AppSetup {
   lastActiveRid?: string;
   /** last active view tab — restored on startup */
   lastActiveView?: string;
+  /** label prefix used to identify milestone labels, default "milestone:" */
+  milestonePrefix?: string;
 }

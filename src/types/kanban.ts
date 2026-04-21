@@ -31,6 +31,7 @@ export interface Issue {
   authorDid: string;
   title: string;
   labels: IssueLabel[];
+  milestones?: string[];
   indicator?: IssueIndicator;
   solved?: boolean;
   priority?: PriorityLevel;
