@@ -44,6 +44,8 @@ pub fn run() {
             find_local_repo,
             create_patch_worktree,
             list_worktrees,
+            list_branches,
+            get_current_branch,
             open_in_editor,
             get_worktree_diff,
             get_worktree_status,

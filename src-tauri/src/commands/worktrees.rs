@@ -32,6 +32,7 @@ pub fn find_local_repo(rid: String) -> Result<Option<String>, String> {
 pub fn create_patch_worktree(
     local_path: String,
     branch_name: String,
+    source_branch: Option<String>,
 ) -> Result<String, String> {
     let repo_path = std::path::Path::new(&local_path);
     let branch = branch_name;
@@ -42,10 +43,14 @@ pub fn create_patch_worktree(
         return Err(format!("directory already exists: {}", worktree_path.display()));
     }
 
-    let output = std::process::Command::new("git")
-        .args(["worktree", "add"])
+    let mut cmd = std::process::Command::new("git");
+    cmd.args(["worktree", "add"])
         .arg(&worktree_path)
-        .args(["-b", &branch])
+        .args(["-b", &branch]);
+    if let Some(ref src) = source_branch {
+        cmd.arg(src);
+    }
+    let output = cmd
         .current_dir(repo_path)
         .output()
         .map_err(|e| format!("failed to run git: {}", e))?;
@@ -55,6 +60,41 @@ pub fn create_patch_worktree(
     } else {
         Err(String::from_utf8_lossy(&output.stderr).into_owned())
     }
+}
+
+#[tauri::command]
+pub fn list_branches(local_path: String) -> Result<Vec<String>, String> {
+    let output = std::process::Command::new("git")
+        .args(["branch", "--format=%(refname:short)"])
+        .current_dir(&local_path)
+        .output()
+        .map_err(|e| format!("failed to run git: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+    }
+
+    let branches = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| l.to_string())
+        .collect();
+    Ok(branches)
+}
+
+#[tauri::command]
+pub fn get_current_branch(local_path: String) -> Result<String, String> {
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .current_dir(&local_path)
+        .output()
+        .map_err(|e| format!("failed to run git: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 #[tauri::command]

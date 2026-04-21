@@ -17,6 +17,7 @@ import { LabelEditor } from './LabelEditor';
 import { StateSelector } from './StateSelector';
 import { PrioritySelector } from './PrioritySelector';
 import { Badge, Button, Textarea } from '../../ui';
+import { GitBranchPicker } from '../worktrees/GitBranchPicker';
 import { useRepo } from '../../contexts/RepoContext';
 import { useActions } from '../../contexts/ActionsContext';
 
@@ -78,10 +79,15 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
   const [savingEdit, setSavingEdit] = useState(false);
   const [worktreeState, setWorktreeState] = useState<
     | { status: 'idle' }
+    | { status: 'picking-branch' }
     | { status: 'creating' }
     | { status: 'done'; path: string }
     | { status: 'error'; message: string }
   >({ status: 'idle' });
+  const [branches, setBranches] = useState<string[]>([]);
+  const [currentBranch, setCurrentBranch] = useState<string>('');
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [worktreeSuffix, setWorktreeSuffix] = useState<string>('');
   const [patchModal, setPatchModal] = useState<{
     open: boolean;
     worktreePath: string;
@@ -228,21 +234,43 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
     }
   }
 
+  async function handleOpenBranchPicker() {
+    if (!localRepoPath) return;
+    try {
+      const [branchList, currentBranch] = await Promise.all([
+        invoke<string[]>('list_branches', { localPath: localRepoPath }),
+        invoke<string>('get_current_branch', { localPath: localRepoPath }),
+      ]);
+      setBranches(branchList);
+      setCurrentBranch(currentBranch);
+      setSelectedBranch(currentBranch);
+      setWorktreeSuffix('');
+      setWorktreeState({ status: 'picking-branch' });
+    } catch (e) {
+      setWorktreeState({ status: 'error', message: String(e) });
+    }
+  }
+
+  function computeBranchName() {
+    const base = worktreeBranchName(issue?.id.slice(0, 7) ?? '', localRepoPath);
+    return worktreeSuffix ? `${base}-${worktreeSuffix}` : base;
+  }
+
+  const pendingBranchName = worktreeState.status === 'picking-branch' ? computeBranchName() : '';
+  const branchConflict = pendingBranchName && (
+    branches.includes(pendingBranchName) ||
+    existingWorktrees.some((w) => w.branch === pendingBranchName)
+  );
+
   async function handleCreateWorktree() {
     if (!issue || !localRepoPath) return;
     setWorktreeState({ status: 'creating' });
     try {
       const path = await invoke<string>('create_patch_worktree', {
         localPath: localRepoPath,
-        branchName: worktreeBranchName(issue.id.slice(0, 7), localRepoPath),
+        branchName: computeBranchName(),
+        sourceBranch: selectedBranch || null,
       });
-      if (preferredEditor) {
-        try {
-          await invoke('open_in_editor', { editor: preferredEditor, path });
-        } catch (e) {
-          console.error('Failed to open editor:', e);
-        }
-      }
       setWorktreeState({ status: 'done', path });
       await loadWorktrees();
     } catch (e) {
@@ -529,13 +557,19 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                             <div
                               key={w.path}
                               className={styles.worktreeRow}
-                              title={preferredEditor ? `Open in ${preferredEditor}` : 'Set a preferred editor in Settings → Repos to open'}
+                              title={w.path}
                             >
-                              <span
-                                className={`${styles.worktreeBranch} ${preferredEditor ? styles.worktreeBranchClickable : ''}`}
-                                onClick={() => preferredEditor && handleOpenWorktree(w.path)}
-                              >{w.branch}</span>
+                              <span className={styles.worktreeBranch}>{w.branch}</span>
                               <span className={styles.worktreeHead}>{w.head.slice(0, 7)}</span>
+                              {preferredEditor && (
+                                <button
+                                  className={styles.worktreePatchBtn}
+                                  onClick={() => handleOpenWorktree(w.path)}
+                                  title={`Open in ${preferredEditor}`}
+                                >
+                                  Open in editor
+                                </button>
+                              )}
                               <button
                                 className={styles.worktreePatchBtn}
                                 onClick={() => setPatchModal({
@@ -563,9 +597,51 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                     )}
 
                     {worktreeState.status === 'idle' && (
-                      <button className={styles.worktreeBtn} onClick={handleCreateWorktree}>
+                      <button className={styles.worktreeBtn} onClick={handleOpenBranchPicker}>
                         + Create worktree
                       </button>
+                    )}
+                    {worktreeState.status === 'picking-branch' && (
+                      <div className={styles.branchPicker}>
+                        <label className={styles.branchPickerLabel}>Source branch</label>
+                        <GitBranchPicker
+                          branches={branches}
+                          currentBranch={currentBranch}
+                          selected={selectedBranch}
+                          onSelect={setSelectedBranch}
+                        />
+                        <label className={styles.branchPickerLabel}>Suffix (optional)</label>
+                        <input
+                          className={styles.suffixInput}
+                          type="text"
+                          placeholder="e.g. v2, fix, alt"
+                          value={worktreeSuffix}
+                          onChange={(e) => setWorktreeSuffix(e.target.value.replace(/\s+/g, '-'))}
+                        />
+                        <div className={styles.branchPreview} title={pendingBranchName}>
+                          ⎇ {pendingBranchName}
+                        </div>
+                        {branchConflict && (
+                          <div className={styles.branchConflict}>
+                            Branch "{pendingBranchName}" already exists — add a suffix
+                          </div>
+                        )}
+                        <div className={styles.branchPickerActions}>
+                          <button
+                            className={styles.worktreeBtn}
+                            onClick={handleCreateWorktree}
+                            disabled={!!branchConflict}
+                          >
+                            Create
+                          </button>
+                          <button
+                            className={styles.branchPickerCancel}
+                            onClick={() => setWorktreeState({ status: 'idle' })}
+                          >
+                            cancel
+                          </button>
+                        </div>
+                      </div>
                     )}
                     {worktreeState.status === 'creating' && (
                       <span className={styles.worktreeHint}>creating…</span>

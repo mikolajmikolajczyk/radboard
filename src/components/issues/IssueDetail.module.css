@@ -425,6 +425,18 @@
   color: var(--text-2);
 }
 
+.worktreeBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--border-3);
+  color: var(--text-6);
+}
+
+.worktreeBtn:disabled:hover {
+  border-color: var(--border-3);
+  color: var(--text-6);
+}
+
 .worktreeHint {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
@@ -563,4 +575,79 @@
 .worktreeBranchClickable:hover {
   text-decoration: underline;
   text-decoration-color: var(--border-3);
+}
+
+.branchPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-4);
+  border-radius: 6px;
+  background: var(--bg-raised);
+}
+
+.branchPickerLabel {
+  font-size: 11px;
+  color: var(--text-5);
+  white-space: nowrap;
+}
+
+.branchPickerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.branchPickerActions .worktreeBtn {
+  flex: 1;
+}
+
+.suffixInput {
+  width: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-4);
+  background: var(--bg-input);
+  border: 1px solid var(--border-4);
+  border-radius: 6px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.suffixInput:focus {
+  border-color: rgba(93, 228, 199, 0.45);
+}
+
+.suffixInput::placeholder { color: var(--text-6); }
+
+.branchPreview {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.branchConflict {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #f87171;
+}
+
+.branchPickerCancel {
+  background: none;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-6);
+  cursor: pointer;
+  padding: 0;
+}
+
+.branchPickerCancel:hover {
+  color: var(--text-4);
 }
