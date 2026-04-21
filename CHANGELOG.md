@@ -1,4 +1,14 @@
 # Changelog
+## v0.4.0 — 2026-04-21
+
+### Features
+
+- When opening radboard - last opened board should appear
+- Worktree view allow creating patches from worktrees
+- Create new issue from the issue list view
+- Improve worktree creation: branch selection, error handling, and deferred editor launch
+- Milestones support
+
 ## v0.3.0 — 2026-04-08
 
 ### Bug Fixes
