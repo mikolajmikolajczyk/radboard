@@ -1111,10 +1111,12 @@ function handleGlobalInboxOpen() {
                 }}
                 onOpenIssue={(id) => { setSelectedIssueInView(id); setActiveView('issues'); }}
                 onFindPatches={(prefix, head) => {
-                  const headMatches = rawPatches.filter((p) => p.head === head);
-                  if (headMatches.length > 0) return headMatches.map((p) => ({ id: p.id, title: p.title, state: p.state, head: p.head }));
+                  const prefixMatches = prefix
+                    ? rawPatches.filter((p) => p.title.includes(prefix) || p.description.includes(prefix))
+                    : [];
+                  if (prefixMatches.length > 0) return prefixMatches.map((p) => ({ id: p.id, title: p.title, state: p.state, head: p.head }));
                   return rawPatches
-                    .filter((p) => p.title.includes(prefix) || p.description.includes(prefix))
+                    .filter((p) => p.head === head)
                     .map((p) => ({ id: p.id, title: p.title, state: p.state, head: p.head }));
                 }}
                 onOpenPatch={(id) => {
