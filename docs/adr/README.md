@@ -12,10 +12,11 @@ Load-bearing decisions for radboard. One ADR per decision, written as a snapshot
 | [0004](0004-home-repo-rid-as-config-root.md) | Home repo RID as single source of truth for board config | 2026-03-31 |
 | [0005](0005-pty-terminal.md) | Full PTY terminal via `portable-pty` + xterm.js | 2026-03-31 |
 | [0006](0006-patch-issue-linking-via-hex7.md) | Link patches to issues via 7-char hex prefix in title | 2026-03-31 |
-| [0007](0007-dynamic-state-columns.md) | Dynamic kanban columns from `state:*` labels | 2026-03-31 |
+| [0007](0007-dynamic-state-columns.md) | Label-driven view conventions (`state:*`, `priority:*`, `milestone:*`) | 2026-03-31 |
 | [0008](0008-radicle-canonical-github-mirror.md) | Radicle is canonical; GitHub mirror exists only for CI runners | 2026-04-01 |
 | [0009](0009-version-sync-via-makefile.md) | Three version manifests synchronized via Makefile | 2026-04-01 |
 | [0010](0010-docker-reproducible-build.md) | Docker-based reproducible release build | 2026-04-01 |
+| [0011](0011-worktree-sibling-layout.md) | Worktrees are siblings of the main clone; local repos discovered by shallow `$HOME` scan | 2026-03-31 |
 
 ## How to add an ADR
 

@@ -43,11 +43,52 @@ No tests, no linter. CI builds release artifacts only.
 - **`src/App.tsx`** is ~1200 lines and owns *all* polling, repo switching, and tab routing. This is intentional ([ADR-0002](docs/adr/0002-react-context-state-management.md)). Don't split it by introducing Redux/Zustand — split by extracting context-owning sub-modules.
 - **Polling cadence is hardcoded**: 60 s issues/patches, 30 s notifications ([ADR-0003](docs/adr/0003-polling-based-sync.md)). Not user-configurable.
 - **Patches link to issues via 7-char hex prefix** in the patch title or description. Regex `/[0-9a-f]{7}/gi` ([ADR-0006](docs/adr/0006-patch-issue-linking-via-hex7.md)). Coincidental hex tokens *will* create false links.
-- **Kanban columns** are derived from `state:*` labels. `Open` and `Closed` are always present and never removable. The Open column is sub-ordered by `priority:critical|high|medium|low`. See [ADR-0007](docs/adr/0007-dynamic-state-columns.md).
-- **Board config** (column order, colors, banned users) is keyed off the **home repo RID** stored in `LocalConfig`, not per-repo. Changing the home repo resets layout. See [ADR-0004](docs/adr/0004-home-repo-rid-as-config-root.md).
+- **Board config** (column order, colors, banned users, milestone prefix, inbox page size) is keyed off the **home repo RID** stored in `LocalConfig`, not per-repo. Changing the home repo resets layout. See [ADR-0004](docs/adr/0004-home-repo-rid-as-config-root.md).
 - **No native title bar** (`decorations: false` in `tauri.conf.json`). `WindowControls` component renders min/max/close.
 - **Terminal** is a real PTY (`portable-pty` + `xterm.js`) bridged over Tauri IPC ([ADR-0005](docs/adr/0005-pty-terminal.md)). Backend keeps an `Arc<Mutex<HashMap<id, PtySession>>>`; killing the app kills all sessions.
 - **All backend commands** live under `src-tauri/src/commands/` (one file per domain). Shared types in `src-tauri/src/types.rs`. Radicle / profile / alias logic in `src-tauri/src/helpers.rs`.
+
+## Label conventions ([ADR-0007](docs/adr/0007-dynamic-state-columns.md))
+
+Several label prefixes are reserved and parsed by the frontend:
+
+- **`state:*`** — kanban column membership. `Open` and `Closed` are always present and bracket the dynamic columns.
+- **`priority:critical|high|medium|low`** — only these four values; sub-orders the Open column. Anything else is ignored.
+- **`milestone:*`** — milestone grouping with progress bars. **The prefix is configurable** via `LocalConfig.milestonePrefix` (default `"milestone:"`). Semver values sort ascending; numeric-prefixed values get title-cased; everything else alphabetical.
+- **Cosmetic variants** — a hardcoded allow-list in `src/App.tsx` maps a few label texts (`refactor`, `dedup`, `inconsistency`) to CSS classes for badge styling. Unknown labels render with default style. Adding a new badge style needs a code change.
+
+## Worktrees ([ADR-0011](docs/adr/0011-worktree-sibling-layout.md))
+
+- Worktrees are created as **siblings of the main clone**: `<parent(main_repo)>/<branch_name>`. Not inside `.git/worktrees/`, not under a radboard-managed dir.
+- `find_local_repo(rid)` discovers the main clone by **shallow scanning `$HOME`** (one level deep), matching the RID string inside each `.git/config`. First match wins; user can override in settings. Repos cloned outside `$HOME` or deeper than one level need a manual path.
+- `commit_and_create_patch` writes a temp file with the patch message and injects `GIT_EDITOR=<script>` so the `git push rad HEAD:refs/patches` is non-interactive. If you touch this flow, preserve that pattern.
+
+## Banned users
+
+`LocalConfig.banned` entries each carry a **scope**: `'all'`, `'issues'`, or `'comments'`. Scope is enforced at render/filter time in the frontend — `'all'` hides their issues *and* comments, `'issues'` only hides their issues, `'comments'` only filters comment threads. New filter call sites must check scope; don't silently treat banned as boolean.
+
+## First-run flow
+
+A user with a fresh install lands in `src/components/welcome/` and steps through:
+
+1. **NoIdentity** — `rad auth` must have been run; the app shows the exact command and aborts if no profile is found at `$RAD_HOME` (default `~/.radicle`).
+2. **RepoPicker** — lists repos visible to the Radicle profile; for each, `find_local_repo()` pre-fills the local path.
+3. **EditorPicker** — preset editors (VS Code, Zed, Neovim, …) plus a custom field. Selected editor is auto-launched after `create_patch_worktree()`.
+
+Reproduce this flow when changing identity, repo, or editor handling.
+
+## Environment variables the backend reads
+
+- **`RAD_HOME`** — Radicle profile location (default `~/.radicle`). Required.
+- **`GSETTINGS_SCHEMA_DIR`** — set *by* the app on Unix (`check_gsettings()` workaround) when the GTK file picker schema isn't on the standard path. NixOS workaround; don't unset.
+- **`GIT_EDITOR`** — set *by* the app inside `commit_and_create_patch` for non-interactive patch creation.
+
+No compile-time feature flags. Build is monolithic.
+
+## Comments and reactions
+
+- Replies are full nested comment objects (`RawCommentData.replies`), not refs. Depth is unbounded; rendering recurses.
+- Reactions are flat per comment: `emoji → [authors]`. No per-author dedup needed; same emoji-author pair is stored once.
 
 ## Files you must not edit by hand
 

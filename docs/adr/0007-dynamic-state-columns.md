@@ -1,4 +1,4 @@
-# ADR-0007: Dynamic kanban columns from `state:*` labels
+# ADR-0007: Label-driven view conventions (`state:*`, `priority:*`, `milestone:*`)
 
 - **Status:** Accepted
 - **Date:** 2026-03-31
@@ -23,21 +23,29 @@ Different projects want different workflow stages (`triage`, `in-progress`, `rev
 
 ## Decision outcome
 
-Chosen: **`state:*` label convention**. `issuesToColumns()` in `App.tsx` derives the column set from observed labels. `Open` and `Closed` are always present and bracket the dynamic columns. Column **order** and **color** are stored in `LocalConfig` (see ADR-0004).
+Chosen: **label-prefix conventions** across the app. The frontend parses several reserved prefixes:
+
+- **`state:*`** — drives kanban column membership. `issuesToColumns()` in `App.tsx` derives the column set from observed labels. `Open` and `Closed` are always present and bracket the dynamic columns. Column **order** and **color** are stored in `LocalConfig` (see ADR-0004).
+- **`priority:critical|high|medium|low`** — only these four values; orders the Open column.
+- **`milestone:*`** (prefix **configurable** via `milestonePrefix` in `LocalConfig`, default `"milestone:"`) — groups issues into milestones with progress bars. Semver values (`v1.0.0`) sort ascending; numeric prefixes (`0-alpha`) are stripped + title-cased for display; everything else alphabetical. See `src/components/milestones/MilestonesView.tsx`.
+- **Cosmetic label variants** — a small allow-list (`refactor`, `dedup`, `inconsistency` at the time of writing) maps to CSS classes for badge styling. Unknown labels get default styling, no warning. See `src/App.tsx` (`labelVariant` map).
 
 ### Positive consequences
 
-- Workflow stages are CLI-editable via `rad label`.
-- Power users can extend; casual users see `Open`/`Closed` only.
+- Workflow stages, priorities, and milestones are CLI-editable via `rad label`.
+- Power users can extend; casual users see only `Open`/`Closed` and unstyled labels.
+- One convention, multiple views.
 
 ### Negative consequences
 
-- Typos create one-off columns. UI helps but doesn't enforce.
+- Typos create one-off columns / milestones. UI helps but doesn't enforce.
 - Removing the last issue with a given `state:*` label leaves the column visible until the next refresh prunes it.
+- The cosmetic variant allow-list lives in code; adding a new badge style needs a code change.
 
 ### Follow-up
 
-- The Open column is further ordered by `priority:critical|high|medium|low` labels (introduced 2026-04-08, `4ae37cd` lineage). Considered part of this same convention.
+- The Open column priority ordering was introduced 2026-04-08 (`4ae37cd` lineage).
+- Milestones were introduced 2026-04-21 (commit `76eed94`). Considered part of this same convention — if the milestone prefix needs to vary per *board*, store it inside the home repo config blob (see ADR-0004) rather than splitting it out.
 
 ## Links
 

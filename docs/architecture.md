@@ -44,6 +44,8 @@ radboard is a single-window Tauri 2 desktop app for managing Radicle issues, pat
 - **Views** — seven tab views: `kanban`, `issues`, `patches`, `worktrees`, `files`, `inbox`, `patch-files`.
 - **Components** — organized by feature under `src/components/` (kanban, issues, patches, files, worktrees, terminal, inbox, settings, welcome, shared).
 - **Kanban columns** — derived dynamically from `state:*` labels via `issuesToColumns()`. `Open` and `Closed` are always present. Order/colors live in `LocalConfig`. See [ADR-0007](adr/0007-dynamic-state-columns.md). The Open column is sub-ordered by `priority:critical|high|medium|low` labels.
+- **Milestones** — labels matching `LocalConfig.milestonePrefix` (default `"milestone:"`) group issues into milestones with progress bars. Prefix is per-board (lives in the home repo's `LocalConfig`).
+- **Cosmetic label variants** — a small allow-list maps specific label texts (`refactor`, `dedup`, `inconsistency`) to CSS badge styles.
 - **Patch ↔ issue linking** — regex scan for `/[0-9a-f]{7}/gi` over patch titles and descriptions; see [ADR-0006](adr/0006-patch-issue-linking-via-hex7.md).
 - **Window chrome** — `decorations: false`; a `WindowControls` component renders min/max/close.
 
@@ -81,13 +83,53 @@ All Radicle operations go through `helpers.rs` for profile/node access. Async wo
 
 - `home_repo_rid` — the single source of truth for board identity. See [ADR-0004](adr/0004-home-repo-rid-as-config-root.md).
 - Column order and colors.
-- Banned users.
+- Banned users (each with a `scope`: `'all'`, `'issues'`, or `'comments'`).
+- `milestonePrefix` (default `"milestone:"`).
+- `inboxPageSize` (default 50).
+- Per-repo settings: local path and preferred editor.
 
-Board config is **not** stored per-repo. Changing the home RID resets board layout.
+Theme (dark/light) and zoom (80%–120%) persist to `localStorage`, *not* `LocalConfig` — they're per-machine UI preferences. Board config is **not** stored per-repo. Changing the home RID resets board layout.
 
 ## Terminal
 
 `portable-pty` (backend) + `xterm.js` (frontend) bridged over Tauri commands. Backend keeps an `Arc<Mutex<HashMap<id, PtySession>>>`. See [ADR-0005](adr/0005-pty-terminal.md).
+
+## Identity and first-run
+
+The backend reads a Radicle profile from `$RAD_HOME` (default `~/.radicle`) via `commands/identity.rs`. If no profile is found, the welcome flow (`src/components/welcome/`) walks the user through three steps:
+
+1. **NoIdentity** — instructs the user to run `rad auth`; the app polls until a profile appears.
+2. **RepoPicker** — lists repos visible to the profile; `find_local_repo()` pre-fills the local path for each (see [ADR-0011](adr/0011-worktree-sibling-layout.md)).
+3. **EditorPicker** — picks the editor command used to launch a worktree after creation.
+
+`check_gsettings()` in `commands/identity.rs` sets `GSETTINGS_SCHEMA_DIR` on Unix when the GTK file picker schemas aren't on the standard path — NixOS workaround.
+
+## Worktrees
+
+`create_patch_worktree()` creates a sibling directory of the main clone (`<parent>/<branch_name>`) via `git worktree add`. `commit_and_create_patch()` injects a temporary `GIT_EDITOR` shell script to supply the patch message non-interactively, then runs `git push rad HEAD:refs/patches`. Discovery and layout details: [ADR-0011](adr/0011-worktree-sibling-layout.md).
+
+## Notifications
+
+Two scopes:
+
+- **Per-repo** — `list_notifications` for the currently selected repo, surfaced in that repo's inbox tab.
+- **Global** — `list_global_notifications` aggregates across all tracked repos; powers the global inbox view.
+
+`NotificationData` carries `status` (`unread`/`read`), `kind` (`issue`/`patch`/`branch`/`tag`/`unknown`), and `event_kind` (e.g. `new_issue`, `comment`, `revision`). Pagination uses `inboxPageSize` (default 50).
+
+## Files view
+
+Tree navigation plus a blob viewer with blame, diff, and commit-log modes. The commit log lazy-loads in 50-entry pages and groups entries by day. Untracked file diffs use `git diff --no-index /dev/null <file>` (so newly-added files render the same way as tracked ones).
+
+## Environment variables
+
+| Var | Direction | Purpose |
+|-----|-----------|---------|
+| `RAD_HOME` | read | Radicle profile location (default `~/.radicle`). Required. |
+| `GSETTINGS_SCHEMA_DIR` | set by app | GTK file picker schemas — Unix-only workaround (`check_gsettings`). |
+| `GIT_EDITOR` | set by app | Injected by `commit_and_create_patch` for non-interactive patch creation. |
+
+No compile-time feature flags. Build is monolithic.
 
 ## Build & release pipeline (summary)
 
