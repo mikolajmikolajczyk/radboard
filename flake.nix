@@ -49,7 +49,7 @@
         # Node / frontend deps
         nodeDeps = with pkgs; [
           nodejs_22
-          nodePackages.pnpm
+          pnpm_10
         ];
 
         pnpmDeps = pkgs.fetchPnpmDeps {
