@@ -1,0 +1,52 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.toggle {
+  display: flex;
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.toggleBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-5);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.toggleBtn:hover {
+  color: var(--text-3);
+}
+
+.toggleActive {
+  background: rgba(93, 228, 199, 0.12);
+  color: #5de4c7;
+}
+
+.preview {
+  background: var(--bg-base);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.previewEmpty {
+  color: var(--text-6);
+  font-style: italic;
+  font-size: 12px;
+}

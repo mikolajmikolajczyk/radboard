@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useRepo } from '../../contexts/RepoContext';
 import { useActions } from '../../contexts/ActionsContext';
-import { Button, Input, Textarea } from '../../ui';
-import { MarkdownBody } from '../shared/MarkdownBody';
+import { Button, Input } from '../../ui';
+import { MarkdownEditor } from '../shared/MarkdownEditor';
 import styles from './NewIssueForm.module.css';
 
 interface Props {
@@ -20,7 +20,6 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
   const [labelInput, setLabelInput] = useState('');
   const [labelFocused, setLabelFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [descMode, setDescMode] = useState<'code' | 'preview'>('code');
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -99,38 +98,14 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
       </label>
 
       <div className={styles.field}>
-        <div className={styles.descHeader}>
-          Description <span className={styles.optional}>(optional)</span>
-          <div className={styles.descToggle}>
-            <button
-              className={`${styles.toggleBtn} ${descMode === 'code' ? styles.toggleActive : ''}`}
-              onClick={() => setDescMode('code')}
-              type="button"
-            >Code</button>
-            <button
-              className={`${styles.toggleBtn} ${descMode === 'preview' ? styles.toggleActive : ''}`}
-              onClick={() => setDescMode('preview')}
-              type="button"
-            >Preview</button>
-          </div>
-        </div>
-        {descMode === 'code' ? (
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the issue…"
-            rows={8}
-            disabled={submitting}
-          />
-        ) : (
-          <div className={styles.preview}>
-            {description.trim() ? (
-              <MarkdownBody content={description} />
-            ) : (
-              <span className={styles.previewEmpty}>Nothing to preview</span>
-            )}
-          </div>
-        )}
+        Description <span className={styles.optional}>(optional)</span>
+        <MarkdownEditor
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Describe the issue…"
+          rows={8}
+          disabled={submitting}
+        />
       </div>
 
       <div className={styles.field}>

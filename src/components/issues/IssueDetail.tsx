@@ -10,6 +10,7 @@ import PatchFromWorktreeModal from '../patches/PatchFromWorktreeModal';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import PatchDiffModal from '../patches/PatchDiffModal';
 import { MarkdownBody } from '../shared/MarkdownBody';
+import { MarkdownEditor } from '../shared/MarkdownEditor';
 import { ReactionBar } from '../shared/ReactionBar';
 import { EmojiPicker } from '../shared/EmojiPicker';
 import { CommentThread } from '../shared/CommentThread';
@@ -17,7 +18,7 @@ import { LabelEditor } from './LabelEditor';
 import { StateSelector } from './StateSelector';
 import { PrioritySelector } from './PrioritySelector';
 import { MilestonePicker } from '../milestones/MilestonePicker';
-import { Badge, Button, Textarea } from '../../ui';
+import { Badge, Button } from '../../ui';
 import { GitBranchPicker } from '../worktrees/GitBranchPicker';
 import { useRepo } from '../../contexts/RepoContext';
 import { useActions } from '../../contexts/ActionsContext';
@@ -338,7 +339,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                 <div className={styles.sectionLabel}>Description</div>
                 {editing ? (
                   <>
-                    <Textarea
+                    <MarkdownEditor
                       className={styles.commentInput}
                       value={editDesc}
                       onChange={(e) => setEditDesc(e.target.value)}
@@ -409,7 +410,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                 )}
 
                 <div className={styles.newComment}>
-                  <Textarea
+                  <MarkdownEditor
                     className={styles.commentInput}
                     value={commentBody}
                     onChange={(e) => setCommentBody(e.target.value)}

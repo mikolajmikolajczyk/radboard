@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Avatar, Button, Textarea } from '../../ui';
+import { Avatar, Button } from '../../ui';
+import { MarkdownEditor } from './MarkdownEditor';
 import { ReactionBar } from './ReactionBar';
 import { EmojiPicker } from './EmojiPicker';
 import type { IssueComment } from '../../types/kanban';
@@ -135,7 +136,7 @@ export function CommentThread({
 
         {replying && (
           <div className={styles.replyForm}>
-            <Textarea
+            <MarkdownEditor
               ref={textareaRef}
               className={styles.commentInput}
               value={replyBody}
