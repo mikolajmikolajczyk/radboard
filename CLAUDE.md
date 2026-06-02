@@ -1,54 +1,33 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Read [`AGENTS.md`](AGENTS.md) first. This file is a pointer.
 
-## What is radboard
+## Documentation map
 
-Desktop Kanban board for Radicle repositories. Built with Tauri 2 (Rust backend) + React 19 (TypeScript frontend). Manages issues, patches, worktrees, notifications, and file browsing across multiple Radicle repos.
+- [`AGENTS.md`](AGENTS.md) — repo-specific gotchas; start here.
+- [`docs/architecture.md`](docs/architecture.md) — components, data flow, runtime layout.
+- [`docs/engineering-workflow.md`](docs/engineering-workflow.md) — dev setup, verification, release.
+- [`docs/adr/`](docs/adr/) — load-bearing architecture decisions.
 
-## Commands
+## Architecture decisions
 
-```bash
-pnpm dev              # Vite dev server (port 1420)
-pnpm tauri dev        # Full dev environment with hot-reload
-pnpm build            # Build frontend (tsc + vite build)
-make build            # Docker-based production build
-make release          # Tag release, bump versions, push to origin + rad
-```
+- [ADR-0001](docs/adr/0001-record-architecture-decisions.md) — Record architecture decisions (meta).
+- [ADR-0002](docs/adr/0002-react-context-state-management.md) — React Context only; no Redux/Zustand.
+- [ADR-0003](docs/adr/0003-polling-based-sync.md) — Polling: 60 s issues/patches, 30 s notifications.
+- [ADR-0004](docs/adr/0004-home-repo-rid-as-config-root.md) — Home repo RID is the single source of truth for board config.
+- [ADR-0005](docs/adr/0005-pty-terminal.md) — Full PTY via `portable-pty` + xterm.js.
+- [ADR-0006](docs/adr/0006-patch-issue-linking-via-hex7.md) — Patches link to issues by 7-char hex prefix in title.
+- [ADR-0007](docs/adr/0007-dynamic-state-columns.md) — Kanban columns derived from `state:*` labels.
+- [ADR-0008](docs/adr/0008-radicle-canonical-github-mirror.md) — Radicle canonical; GitHub mirror is CI-only.
+- [ADR-0009](docs/adr/0009-version-sync-via-makefile.md) — Three version manifests synced via `make release`.
+- [ADR-0010](docs/adr/0010-docker-reproducible-build.md) — Docker-based reproducible release build.
 
-No test suite or linter configured.
+## Quick reminders
 
-## Architecture
-
-### Frontend (`src/`)
-
-**App.tsx** is the central orchestrator (~1200 lines). Manages all app state, repo switching, data polling (60s issues/patches, 30s notifications), and view routing.
-
-Seven main views rendered via tab system: `kanban`, `issues`, `patches`, `worktrees`, `files`, `inbox`, `patch-files`.
-
-State management: React Context (`RepoContext`, `ActionsContext`, `TerminalContext`) + local useState. No external state library.
-
-Key data flow: raw issues from Radicle → `issuesToColumns()` in App.tsx → Kanban columns. Dynamic columns created from `state:*` labels. Priority zones order the Open column (critical → high → medium → low).
-
-Components organized by feature under `src/components/` (kanban, issues, patches, files, worktrees, terminal, inbox, settings, welcome, shared).
-
-### Backend (`src-tauri/`)
-
-- **lib.rs** — Tauri app setup, registers 40+ commands, manages PtyRegistry for terminal sessions
-- **commands/** — One file per domain: issues, patches, files, worktrees, notifications, terminal, config, identity
-- **types.rs** — All serializable data types shared with frontend (LocalConfig, IssueData, PatchData, CommentData, etc.)
-- **helpers.rs** — Radicle profile access, author alias resolution, reaction aggregation, comment thread building
-
-Backend talks to Radicle via the `radicle` crate (v0.21). All Radicle operations go through helpers.rs for profile/node access.
-
-### Config
-
-LocalConfig (persisted via Tauri commands) stores: home repo RID, column order/colors, banned users. The home repo RID is the source of truth — board config lives in one repo, not per-repo.
-
-### Key patterns
-
-- Patches linked to issues via 7-char hex prefix matching in titles
-- Comments support threading (replies) and emoji reactions
-- Worktree management wraps git worktrees for patch-based development
-- Terminal uses portable-pty crate with xterm.js frontend
-- Window has no native decorations (custom title bar)
+- Contribution = Radicle **patch**, not GitHub PR. GitHub is a CI mirror.
+- `App.tsx` is intentionally one big orchestrator. Don't introduce Redux/Zustand to "fix" it.
+- Polling cadence is hardcoded. Don't make it configurable without an ADR.
+- Bump versions only via `make release` — three files must stay in sync.
+- Never edit `CHANGELOG.md` by hand; `git-cliff` regenerates it.
+- Conventional Commits required for changelog inclusion.
+- On non-NixOS + NVIDIA, skip `nix develop` and use system `pnpm` + `rustup`.

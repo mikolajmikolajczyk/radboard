@@ -61,3 +61,10 @@ rad clone rad:z2ouXvht3Vj3WKay9ra6voFRG8C7n --seed seed.mikolajczyk.org
 Open issues and patches on Radicle. If you don't have Radicle set up yet, see [radicle.xyz](https://radicle.xyz) to get started.
 
 Project page: [radboard.mikolajczyk.org](https://radboard.mikolajczyk.org)
+
+## Documentation
+
+- [`AGENTS.md`](AGENTS.md) — repo-specific gotchas for contributors and coding agents.
+- [`docs/architecture.md`](docs/architecture.md) — components, data flow, runtime layout.
+- [`docs/engineering-workflow.md`](docs/engineering-workflow.md) — dev setup, verification, release flow.
+- [`docs/adr/`](docs/adr/) — architecture decision records.
