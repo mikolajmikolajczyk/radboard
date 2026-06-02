@@ -973,7 +973,19 @@ function handleGlobalInboxOpen() {
 
   return (
     <div className={styles.root} style={{ zoom }} data-theme={theme}>
-      <header className={styles.topbar} data-tauri-drag-region>
+      <header
+        className={styles.topbar}
+        data-tauri-drag-region
+        onMouseDown={(e) => {
+          if (e.buttons !== 1) return;
+          if ((e.target as HTMLElement).closest('button, a, input, textarea, select, [role="button"]')) return;
+          getCurrentWindow().startDragging();
+        }}
+        onDoubleClick={(e) => {
+          if ((e.target as HTMLElement).closest('button, a, input, textarea, select, [role="button"]')) return;
+          getCurrentWindow().toggleMaximize();
+        }}
+      >
         <div className={styles.logoGroup}>
           <div className={styles.logo}>
             <div className={styles.logoDot} />
