@@ -182,9 +182,10 @@ function issuesToColumns(
       })),
     });
 
-    // state: label determines dynamic column; otherwise default by raw state
+    // Closed/solved issues always go to the Closed column regardless of any lingering state:* label.
+    // For open issues, state: label determines the dynamic column.
     const stateLabel = raw.labels.find((l) => l.startsWith('state:'));
-    const labelCol = stateLabel ? stateLabel.slice(6) : null;
+    const labelCol = (raw.state === 'open' && stateLabel) ? stateLabel.slice(6) : null;
 
     const colId = labelCol ?? defaultColumn(raw.state);
     (cols[colId] ?? cols[defaultColumn(raw.state)]).issues.push(card);
@@ -455,6 +456,27 @@ export default function App() {
 
     return () => { cancelled = true; };
   }, [activeRid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist newly discovered dynamic state:* columns so they survive an empty state.
+  // Once a column has been seen, it stays in the user's columnOrder until they explicitly
+  // remove it via the column context menu (right-click → Remove column).
+  useEffect(() => {
+    if (!activeRid) return;
+    const dynamicIds = columns
+      .filter((c) => !c.isStatic && !STATIC_COL_IDS.has(c.id))
+      .map((c) => c.id);
+    if (dynamicIds.length === 0) return;
+    setSetup((prev) => {
+      if (!prev) return prev;
+      const persisted = prev.columnOrder?.[activeRid] ?? [];
+      const missing = dynamicIds.filter((id) => !persisted.includes(id));
+      if (missing.length === 0) return prev;
+      const merged = [...persisted, ...missing];
+      const next = { ...prev, columnOrder: { ...prev.columnOrder, [activeRid]: merged } };
+      invoke('save_config', { config: next }).catch(console.error);
+      return next;
+    });
+  }, [columns, activeRid]);
 
   function handleSetup(s: AppSetup) {
     const full = { ...s };
