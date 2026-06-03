@@ -106,6 +106,31 @@ function issuesToColumns(
     cols[id] = { id, title: titleFromId(id), issues: [] };
   }
 
+  // Map each issue's 7-char prefix back to its full id, used to resolve
+  // `blocked:<hex7>` labels to concrete issues at render time.
+  const issueByPrefix = new Map<string, string>();
+  for (const raw of issues) {
+    issueByPrefix.set(raw.id.slice(0, 7).toLowerCase(), raw.id);
+  }
+
+  // Inverted blocks index: for every `blocked:<hex7>` label, record the
+  // blocked issue's id against the blocker. The blocker may not be loaded —
+  // silently ignored.
+  const blockedByBlocker = new Map<string, string[]>(); // blockerId -> [blockedId, …]
+  const HEX7_LABEL = /^[0-9a-f]{7}$/i;
+  for (const raw of issues) {
+    for (const l of raw.labels) {
+      if (!l.startsWith('blocked:')) continue;
+      const val = l.slice('blocked:'.length);
+      if (!HEX7_LABEL.test(val)) continue;
+      const blockerId = issueByPrefix.get(val.toLowerCase());
+      if (!blockerId) continue;
+      const list = blockedByBlocker.get(blockerId) ?? [];
+      list.push(raw.id);
+      blockedByBlocker.set(blockerId, list);
+    }
+  }
+
   // Build inverted index: 7-char hex prefix → patches that mention it
   // This turns O(N*M) string scans into O(M) build + O(1) lookup
   const patchesByPrefix = new Map<string, RawPatchData[]>();
@@ -148,16 +173,28 @@ function issuesToColumns(
     const milestoneLabels = raw.labels.filter((l) => l.startsWith(milestonePrefix));
     const milestones = milestoneLabels.map((l) => l.slice(milestonePrefix.length)).filter(Boolean);
 
+    const blockedBy = raw.labels
+      .filter((l) => l.startsWith('blocked:'))
+      .map((l) => {
+        const v = l.slice('blocked:'.length);
+        const linkedIssueId = HEX7_LABEL.test(v) ? issueByPrefix.get(v.toLowerCase()) : undefined;
+        return { raw: v, linkedIssueId };
+      });
+
+    const blockedIssueIds = blockedByBlocker.get(raw.id);
+
     const card = {
       id: raw.id,
       author: raw.author,
       authorDid: raw.authorDid,
       title: raw.title,
       labels: raw.labels
-        .filter((l) => !l.startsWith('priority:') && !l.startsWith(milestonePrefix))
+        .filter((l) => !l.startsWith('priority:') && !l.startsWith(milestonePrefix) && !l.startsWith('blocked:'))
         .map((l) => ({ text: l, variant: l })),
       milestones: milestones.length > 0 ? milestones : undefined,
       assignees: raw.assignees.length > 0 ? raw.assignees : undefined,
+      blockedBy: blockedBy.length > 0 ? blockedBy : undefined,
+      blockedIssueIds: blockedIssueIds && blockedIssueIds.length > 0 ? blockedIssueIds : undefined,
       indicator: Object.keys(indicator).length > 0 ? indicator : undefined,
       ...(raw.state === 'solved' && { solved: true }),
       priority,

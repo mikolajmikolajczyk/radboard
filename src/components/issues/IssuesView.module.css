@@ -342,6 +342,34 @@
   border: 1px solid rgba(56, 189, 248, 0.20);
 }
 
+.rowBlockedPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.30);
+}
+
+.rowBlocksPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(249, 168, 37, 0.10);
+  color: #f59e0b;
+  border: 1px solid rgba(249, 168, 37, 0.25);
+}
+
+.rowBlocked .rowTitle,
+.rowBlocked .rowLabels,
+.rowBlocked .author,
+.rowBlocked .date,
+.rowBlocked .badge {
+  opacity: 0.6;
+}
+
 .author {
   font-size: 10px;
   color: var(--text-6);

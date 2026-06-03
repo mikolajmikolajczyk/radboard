@@ -32,6 +32,9 @@ interface Props {
   embedded?: boolean;
   sidebarWidth?: number;
   onSidebarWidthChange?: (width: number) => void;
+  /** Optional sibling lookup so the blocked-by / blocks panel can show titles and links. */
+  allIssues?: Map<string, IssueDetail>;
+  onNavigateIssue?: (id: string) => void;
 }
 
 function mapRawComment(raw: RawCommentData): IssueComment {
@@ -47,7 +50,7 @@ function mapRawComment(raw: RawCommentData): IssueComment {
 }
 
 
-export default function IssueDetail({ issue, currentColumnId, onClose, embedded = false, sidebarWidth: sidebarWidthProp, onSidebarWidthChange }: Props) {
+export default function IssueDetail({ issue, currentColumnId, onClose, embedded = false, sidebarWidth: sidebarWidthProp, onSidebarWidthChange, allIssues, onNavigateIssue }: Props) {
   const { myDid, delegateDids, bannedUsers, explorerUrl, seedNode, localRepoPath, preferredEditor, milestoneSuggestions, milestonePrefix } = useRepo();
   const { onRefresh: actionsOnRefresh, onBanUser, onStateChange, onPriorityChange, onOpenPatch, onCommentsLoaded } = useActions();
 
@@ -546,6 +549,55 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                       <span className={`${styles.sidebarFieldValue} ${styles.sidebarEmpty}`}>none</span>
                     )}
                   </div>
+
+                  {(issue.blockedBy && issue.blockedBy.length > 0) && (
+                    <div className={styles.sidebarField}>
+                      <span className={styles.sidebarFieldLabel}>blocked by</span>
+                      <div className={styles.labelEditor}>
+                        {issue.blockedBy.map((b, i) => {
+                          const target = b.linkedIssueId ? allIssues?.get(b.linkedIssueId) : undefined;
+                          if (b.linkedIssueId && target && onNavigateIssue) {
+                            return (
+                              <button
+                                key={i}
+                                className={styles.labelChip}
+                                title={target.title}
+                                onClick={() => onNavigateIssue(b.linkedIssueId!)}
+                              >#{b.raw} {target.title.length > 30 ? target.title.slice(0, 30) + '…' : target.title}</button>
+                            );
+                          }
+                          if (b.linkedIssueId) {
+                            return <span key={i} className={styles.labelChip} title={b.linkedIssueId}>#{b.raw}</span>;
+                          }
+                          return <span key={i} className={styles.labelChip}>{b.raw}</span>;
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {(issue.blockedIssueIds && issue.blockedIssueIds.length > 0) && (
+                    <div className={styles.sidebarField}>
+                      <span className={styles.sidebarFieldLabel}>blocks</span>
+                      <div className={styles.labelEditor}>
+                        {issue.blockedIssueIds.map((id) => {
+                          const target = allIssues?.get(id);
+                          const title = target?.title ?? id;
+                          const short = id.slice(0, 7);
+                          if (onNavigateIssue) {
+                            return (
+                              <button
+                                key={id}
+                                className={styles.labelChip}
+                                title={title}
+                                onClick={() => onNavigateIssue(id)}
+                              >#{short} {title.length > 30 ? title.slice(0, 30) + '…' : title}</button>
+                            );
+                          }
+                          return <span key={id} className={styles.labelChip}>#{short}</span>;
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <div className={styles.sidebarField}>
                     <span className={styles.sidebarFieldLabel}>milestone</span>

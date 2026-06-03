@@ -117,6 +117,38 @@
 .labelInconsistency { background: rgba(248, 113, 113, 0.10); color: #f87171; }
 .labelDefault     { background: rgba(99, 115, 210, 0.12); color: #818cf8; }
 
+/* Blocked / blocks pills */
+.blockedPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.30);
+  text-transform: lowercase;
+}
+
+.blocksPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(249, 168, 37, 0.10);
+  color: #f59e0b;
+  border: 1px solid rgba(249, 168, 37, 0.25);
+}
+
+.cardBlocked .title,
+.cardBlocked .footer,
+.cardBlocked .meta {
+  opacity: 0.55;
+}
+
+.cardBlocked .blockedPill {
+  opacity: 1;
+}
+
 /* Assignee chip */
 .assignee {
   font-family: 'JetBrains Mono', monospace;

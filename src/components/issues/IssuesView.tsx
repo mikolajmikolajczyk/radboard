@@ -333,7 +333,7 @@ export default function IssuesView({
               <button
                 key={issue.id}
                 data-id={issue.id}
-                className={`${styles.row} ${selectedIssueId === issue.id ? styles.rowActive : ''}`}
+                className={`${styles.row} ${selectedIssueId === issue.id ? styles.rowActive : ''} ${(issue.blockedBy?.length ?? 0) > 0 ? styles.rowBlocked : ''}`}
                 onClick={() => { setCreatingNew(false); onSelectIssue(issue.id); }}
               >
                 <IssueIdBadge id={issue.id} />
@@ -366,6 +366,12 @@ export default function IssuesView({
                   <span className={styles.prioSpacer} />
                 )}
                 <span className={styles.rowTitle}>{issue.title}</span>
+                {(issue.blockedBy?.length ?? 0) > 0 && (
+                  <span className={styles.rowBlockedPill} title={issue.blockedBy!.map((b) => `blocked by ${b.raw}`).join('; ')}>blocked</span>
+                )}
+                {issue.blockedIssueIds && issue.blockedIssueIds.length > 0 && (
+                  <span className={styles.rowBlocksPill}>blocks {issue.blockedIssueIds.length}</span>
+                )}
                 {issue.milestones && issue.milestones.length > 0 && (
                   <span className={styles.rowLabels}>
                     {issue.milestones.map((ms) => (
@@ -414,6 +420,8 @@ export default function IssuesView({
             currentColumnId={currentColumnId}
             sidebarWidth={issueSidebarWidth}
             onSidebarWidthChange={setIssueSidebarWidth}
+            allIssues={issueDetails}
+            onNavigateIssue={(id) => { setCreatingNew(false); onSelectIssue(id); }}
           />
         ) : (
           <div className={styles.emptyDetail}>Select an issue to view details</div>

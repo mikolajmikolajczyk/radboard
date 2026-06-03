@@ -51,9 +51,11 @@ function Indicator({ indicator }: { indicator: IssueIndicator }) {
 }
 
 export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, onBan }: Props) {
+  const isBlocked = (issue.blockedBy?.length ?? 0) > 0;
+  const blockedTitle = issue.blockedBy?.map((b) => `blocked by ${b.linkedIssueId ? b.raw : b.raw}`).join('; ');
   return (
     <div
-      className={`${styles.card} ${isDragging ? styles.dragging : ''} ${issue.solved ? styles.cardSolved : ''}`}
+      className={`${styles.card} ${isDragging ? styles.dragging : ''} ${issue.solved ? styles.cardSolved : ''} ${isBlocked ? styles.cardBlocked : ''}`}
       onPointerDown={onPointerDown}
       onClick={() => onClick(issue.id)}
     >
@@ -77,6 +79,14 @@ export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, 
       <p className={styles.title}>{issue.title}</p>
 
       <div className={styles.footer}>
+        {isBlocked && (
+          <span className={styles.blockedPill} title={blockedTitle}>blocked</span>
+        )}
+        {issue.blockedIssueIds && issue.blockedIssueIds.length > 0 && (
+          <span className={styles.blocksPill} title={`blocks ${issue.blockedIssueIds.length} issue${issue.blockedIssueIds.length === 1 ? '' : 's'}`}>
+            blocks {issue.blockedIssueIds.length}
+          </span>
+        )}
         {issue.milestones?.map((ms) => (
           <span key={ms} className={styles.milestone}>{formatMilestoneDisplay(ms)}</span>
         ))}

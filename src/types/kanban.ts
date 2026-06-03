@@ -25,6 +25,13 @@ export interface PatchRef {
   head: string;
 }
 
+export interface BlockedRef {
+  /** Raw value after `blocked:` — 7-char hex id or free-text reason. */
+  raw: string;
+  /** Resolved full issue id if `raw` matches a loaded issue's prefix. */
+  linkedIssueId?: string;
+}
+
 export interface Issue {
   id: string;
   author: string;
@@ -33,6 +40,9 @@ export interface Issue {
   labels: IssueLabel[];
   milestones?: string[];
   assignees?: import('./radboard').AssigneeRef[];
+  blockedBy?: BlockedRef[];
+  /** Full ids of loaded issues that have a `blocked:<prefix>` label pointing at this issue. */
+  blockedIssueIds?: string[];
   indicator?: IssueIndicator;
   solved?: boolean;
   priority?: PriorityLevel;
