@@ -1,4 +1,10 @@
 # Changelog
+## v0.5.2 — 2026-06-03
+
+### Bug Fixes
+
+- restore file ownership after docker step so git can write
+
 ## v0.5.1 — 2026-06-03
 
 ### Bug Fixes
