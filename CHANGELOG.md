@@ -1,4 +1,28 @@
 # Changelog
+## v0.5.0 — 2026-06-03
+
+### Bug Fixes
+
+- replace removed nodePackages.pnpm with pnpm_10
+- prefer branch-prefix over HEAD match in worktree patch lookup (9375787)
+- enable window dragging from custom topbar
+- milestone view shows terminal status, not lingering state:* label
+- Create patch — load existing commits, allow rewriting non-HEAD with dirty worktree (6f60cdc)
+
+### Features
+
+- markdown preview toggle in issue editor and comments (f2fc5db)
+- copyable issue id badge across kanban, issues, milestones, detail (bbebfc3)
+- persist discovered state:* columns; closed issues always land in Closed (e5bdc64)
+- issue assignee support (26df223)
+- filter kanban by label (d5a750d)
+- blocked / blocks visual indicators (d8b85ae)
+
+### docs
+
+- bootstrap contributor documentation
+- expand coverage of milestones, worktrees, banned users, first-run, env vars
+
 ## v0.4.0 — 2026-04-21
 
 ### Features
