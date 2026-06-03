@@ -1,8 +1,11 @@
 [package]
 name = "radboard"
 version = "0.5.1"
-description = "A Tauri App"
-authors = ["you"]
+description = "Desktop Kanban board for Radicle repositories"
+authors = ["Mikołaj Mikołajczyk <mikolajczyk.mikolajm@gmail.com>"]
+homepage = "https://radboard.mikolajczyk.org"
+repository = "https://seed.mikolajczyk.org/z2ouXvht3Vj3WKay9ra6voFRG8C7n"
+license = "MIT"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
