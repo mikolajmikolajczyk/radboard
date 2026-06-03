@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# TS / Vite build metadata
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
+
 # Rust/Cargo workspace build artifacts
 target/
 
