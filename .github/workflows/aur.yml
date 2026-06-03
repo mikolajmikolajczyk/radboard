@@ -92,6 +92,8 @@ jobs:
             bash -c "pacman -Sy --noconfirm pacman-contrib && \
                      useradd -m builder && chown -R builder /pkg && \
                      su builder -c 'makepkg --printsrcinfo' > .SRCINFO"
+          # Restore ownership so the runner user can use git afterwards.
+          sudo chown -R "$(id -u):$(id -g)" .
 
       - name: Commit + push
         run: |
