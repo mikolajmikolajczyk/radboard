@@ -36,6 +36,8 @@ pub fn run() {
             create_issue,
             edit_issue,
             label_issue,
+            assign_issue,
+            search_users,
             set_issue_state,
             add_comment,
             reply_comment,

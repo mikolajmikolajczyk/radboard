@@ -45,6 +45,8 @@ export default function IssuesView({
   const [search, setSearch] = useState('');
   const [labelFilters, setLabelFilters] = useState<Map<string, 'or' | 'and'>>(new Map());
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const [assigneeFilters, setAssigneeFilters] = useState<Set<string>>(new Set());
+  const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
   const [issueSidebarWidth, setIssueSidebarWidth] = useState(210);
   const [creatingNew, _setCreatingNew] = useState(!!startCreating);
   function setCreatingNew(v: boolean) {
@@ -56,12 +58,14 @@ export default function IssuesView({
     if (startCreating) _setCreatingNew(true);
   }, [startCreating]);
   const labelDropdownRef = useRef<HTMLDivElement>(null);
+  const assigneeDropdownRef = useRef<HTMLDivElement>(null);
 
   const { width: listWidth, dividerProps, isDragging } = useResizableDivider({
     initial: Math.round(window.innerWidth / 2), min: 200, max: Math.round(window.innerWidth * 0.75),
   });
 
   useOutsideClick(labelDropdownRef, () => setLabelDropdownOpen(false), labelDropdownOpen);
+  useOutsideClick(assigneeDropdownRef, () => setAssigneeDropdownOpen(false), assigneeDropdownOpen);
 
   // Sort: uncategorized (no priority) first, then by priority level, then by date desc
   const priorityRank: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4 };
@@ -93,6 +97,23 @@ export default function IssuesView({
     allIssues.flatMap((i) => i.labels.map((l) => l.text).filter((t) => !t.startsWith('state:'))),
   )];
 
+  // Collect unique assignees from all issues, keyed by DID, keeping first-seen alias
+  const allAssigneesMap = new Map<string, string>();
+  for (const i of allIssues) {
+    for (const a of i.assignees ?? []) {
+      if (!allAssigneesMap.has(a.did)) allAssigneesMap.set(a.did, a.alias);
+    }
+  }
+  const allAssignees = [...allAssigneesMap.entries()].map(([did, alias]) => ({ did, alias }));
+
+  function toggleAssigneeFilter(did: string) {
+    setAssigneeFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(did)) next.delete(did); else next.add(did);
+      return next;
+    });
+  }
+
   function cycleLabelFilter(label: string) {
     setLabelFilters((prev) => {
       const next = new Map(prev);
@@ -112,6 +133,8 @@ export default function IssuesView({
     (i) => issueMatchesFilter(i, filter) &&
            (orLabels.length === 0 || orLabels.some((lf) => i.labels.some((l) => l.text === lf))) &&
            andLabels.every((lf) => i.labels.some((l) => l.text === lf)) &&
+           (assigneeFilters.size === 0 ||
+             (i.assignees?.some((a) => assigneeFilters.has(a.did)) ?? false)) &&
            (searchLower === '' || i.title.toLowerCase().includes(searchLower) || i.author.toLowerCase().includes(searchLower)),
   );
 
@@ -194,6 +217,59 @@ export default function IssuesView({
             onClick={() => { setCreatingNew(true); onSelectIssue(null); }}
             title="Create new issue"
           >+ New issue</button>
+          {[...assigneeFilters].map((did) => {
+            const alias = allAssigneesMap.get(did) ?? did;
+            return (
+              <FilterChip
+                key={did}
+                active
+                onClick={() => toggleAssigneeFilter(did)}
+                title={did}
+              >
+                @{alias} ✕
+              </FilterChip>
+            );
+          })}
+          {allAssignees.length > 0 && (
+            <div className={styles.labelDropdownWrap} ref={assigneeDropdownRef}>
+              <FilterChip
+                active={assigneeFilters.size > 0}
+                onClick={() => setAssigneeDropdownOpen((o) => !o)}
+              >
+                Assignee ▾
+              </FilterChip>
+              {assigneeDropdownOpen && (
+                <div className={styles.labelDropdown}>
+                  {allAssignees.map(({ did, alias }) => {
+                    const count = allIssues.filter(
+                      (i) => issueMatchesFilter(i, filter) && i.assignees?.some((a) => a.did === did),
+                    ).length;
+                    const active = assigneeFilters.has(did);
+                    return (
+                      <button
+                        key={did}
+                        className={`${styles.labelOption} ${active ? styles.labelOptionActive : ''}`}
+                        onClick={() => toggleAssigneeFilter(did)}
+                        title={did}
+                      >
+                        <span className={`${styles.labelOptionMode} ${active ? styles.modeOr : ''}`}>
+                          {active ? '✓' : '·'}
+                        </span>
+                        <span className={styles.labelOptionText}>@{alias}</span>
+                        <span className={styles.labelOptionCount}>{count}</span>
+                      </button>
+                    );
+                  })}
+                  {assigneeFilters.size > 0 && (
+                    <button
+                      className={styles.labelClear}
+                      onClick={() => { setAssigneeFilters(new Set()); setAssigneeDropdownOpen(false); }}
+                    >Clear</button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           {allLabels.length > 0 && (
             <div className={styles.labelDropdownWrap} ref={labelDropdownRef}>
               <FilterChip
@@ -301,6 +377,13 @@ export default function IssuesView({
                   <span className={styles.rowLabels}>
                     {issue.labels.filter((l) => !l.text.startsWith('state:')).map((l) => (
                       <span key={l.text} className={styles.rowLabel}>{l.text}</span>
+                    ))}
+                  </span>
+                )}
+                {issue.assignees && issue.assignees.length > 0 && (
+                  <span className={styles.rowLabels}>
+                    {issue.assignees.map((a) => (
+                      <span key={a.did} className={styles.rowAssignee} title={a.did}>@{a.alias}</span>
                     ))}
                   </span>
                 )}

@@ -32,6 +32,7 @@ export interface Issue {
   title: string;
   labels: IssueLabel[];
   milestones?: string[];
+  assignees?: import('./radboard').AssigneeRef[];
   indicator?: IssueIndicator;
   solved?: boolean;
   priority?: PriorityLevel;

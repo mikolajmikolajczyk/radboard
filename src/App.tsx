@@ -157,6 +157,7 @@ function issuesToColumns(
         .filter((l) => !l.startsWith('priority:') && !l.startsWith(milestonePrefix))
         .map((l) => ({ text: l, variant: l })),
       milestones: milestones.length > 0 ? milestones : undefined,
+      assignees: raw.assignees.length > 0 ? raw.assignees : undefined,
       indicator: Object.keys(indicator).length > 0 ? indicator : undefined,
       ...(raw.state === 'solved' && { solved: true }),
       priority,

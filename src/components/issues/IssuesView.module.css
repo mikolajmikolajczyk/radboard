@@ -332,6 +332,16 @@
   border: 1px solid rgba(167, 139, 250, 0.20);
 }
 
+.rowAssignee {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(56, 189, 248, 0.10);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.20);
+}
+
 .author {
   font-size: 10px;
   color: var(--text-6);

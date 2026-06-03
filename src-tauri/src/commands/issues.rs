@@ -1,13 +1,28 @@
+use std::collections::HashSet;
+
 use radicle::cob::common::Reaction;
 use radicle::cob::issue::{CloseReason, Issues, State};
 use radicle::cob::thread::CommentId;
 use radicle::identity::IdError;
+use radicle::node::{Alias, AliasStore as _};
 use radicle::prelude::Did;
 use radicle::profile::Profile;
-use radicle::storage::{ReadStorage as _, WriteStorage as _};
+use radicle::storage::{ReadRepository as _, ReadStorage as _, WriteStorage as _};
 
 use crate::helpers::{announce_refs, build_comments, reactions_from, resolve_author};
-use crate::types::IssueData;
+use crate::types::{AssigneeRef, IssueData};
+
+fn collect_assignees(profile: &Profile, issue: &radicle::cob::issue::Issue) -> Vec<AssigneeRef> {
+    issue.assignees()
+        .map(|did| {
+            let pk = *did.as_key();
+            AssigneeRef {
+                did: did.to_string(),
+                alias: resolve_author(profile, pk),
+            }
+        })
+        .collect()
+}
 
 #[tauri::command]
 pub async fn list_issues(rid: String) -> Result<Vec<IssueData>, String> {
@@ -43,6 +58,7 @@ pub async fn list_issues(rid: String) -> Result<Vec<IssueData>, String> {
                 state: state.to_owned(),
                 created_at: issue.timestamp().as_millis() as u64,
                 labels: issue.labels().map(|l| l.name().to_owned()).collect(),
+                assignees: collect_assignees(&profile, &issue),
                 reactions: reactions_from(&profile, root.reactions()),
                 comments: vec![],
                 comment_count,
@@ -79,6 +95,7 @@ pub fn get_issue(rid: String, issue_id: String) -> Result<Option<IssueData>, Str
         state: state.to_owned(),
         created_at: issue.timestamp().as_millis() as u64,
         labels: issue.labels().map(|l| l.name().to_owned()).collect(),
+        assignees: collect_assignees(&profile, &issue),
         reactions: reactions_from(&profile, root.reactions()),
         comments: build_comments(&profile, &issue, root_id),
         comment_count: 0,
@@ -123,6 +140,89 @@ pub fn edit_issue(rid: String, issue_id: String, title: String, description: Str
     let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
     issue.edit(title, &signer).map_err(|e| e.to_string())?;
     issue.edit_description(description, [], &signer).map_err(|e| e.to_string())?;
+    announce_refs(&profile, rid);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn search_users(rid: String, query: String) -> Result<Vec<AssigneeRef>, String> {
+    let profile = Profile::load().map_err(|e| e.to_string())?;
+    let rid: radicle::prelude::RepoId = rid.parse().map_err(|e: IdError| e.to_string())?;
+
+    let mut result: Vec<AssigneeRef> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+
+    let q = query.trim();
+    let q_lower = q.to_lowercase();
+
+    let push = |result: &mut Vec<AssigneeRef>, seen: &mut HashSet<String>, did: String, alias: String| {
+        if seen.insert(did.clone()) {
+            // Only include if query is empty or matches the alias/did
+            if q_lower.is_empty()
+                || alias.to_lowercase().contains(&q_lower)
+                || did.to_lowercase().contains(&q_lower)
+            {
+                result.push(AssigneeRef { did, alias });
+            }
+        }
+    };
+
+    // Always offer "self" first.
+    let me_pk = profile.public_key;
+    push(
+        &mut result,
+        &mut seen,
+        Did::from(me_pk).to_string(),
+        resolve_author(&profile, me_pk),
+    );
+
+    // Then the delegates of the active repo.
+    if let Ok(repo) = profile.storage.repository(rid) {
+        if let Ok(delegates) = repo.delegates() {
+            for did in delegates.iter() {
+                let pk = *did.as_key();
+                push(
+                    &mut result,
+                    &mut seen,
+                    did.to_string(),
+                    resolve_author(&profile, pk),
+                );
+            }
+        }
+    }
+
+    // Then a substring search in the alias store (peers from policy + node DB).
+    if !q.is_empty() {
+        if let Ok(alias) = q.parse::<Alias>() {
+            for (alias, nodes) in profile.aliases().reverse_lookup(&alias) {
+                for node in nodes {
+                    let did = Did::from(node).to_string();
+                    push(&mut result, &mut seen, did, alias.to_string());
+                }
+            }
+        }
+    }
+
+    result.truncate(20);
+    Ok(result)
+}
+
+#[tauri::command]
+pub fn assign_issue(rid: String, issue_id: String, assignees: Vec<String>) -> Result<(), String> {
+    let profile = Profile::load().map_err(|e| e.to_string())?;
+    let rid: radicle::prelude::RepoId = rid.parse().map_err(|e: IdError| e.to_string())?;
+    let repo = profile.storage.repository_mut(rid).map_err(|e| e.to_string())?;
+    let signer = profile.signer().map_err(|e| e.to_string())?;
+    let issue_id = issue_id
+        .parse::<radicle::cob::ObjectId>()
+        .map_err(|e| e.to_string())?;
+    let parsed: Vec<Did> = assignees
+        .iter()
+        .map(|s| s.parse::<Did>().map_err(|e| e.to_string()))
+        .collect::<Result<_, _>>()?;
+    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
+    issue.assign(parsed, &signer).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }

@@ -80,6 +80,9 @@ export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, 
         {issue.milestones?.map((ms) => (
           <span key={ms} className={styles.milestone}>{formatMilestoneDisplay(ms)}</span>
         ))}
+        {issue.assignees?.map((a) => (
+          <span key={a.did} className={styles.assignee} title={a.did}>@{a.alias}</span>
+        ))}
         {issue.labels.map((label) => (
           <Label key={label.text} label={label} />
         ))}

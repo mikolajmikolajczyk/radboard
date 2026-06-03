@@ -16,6 +16,7 @@ import { IssueIdBadge } from '../shared/IssueIdBadge';
 import { EmojiPicker } from '../shared/EmojiPicker';
 import { CommentThread } from '../shared/CommentThread';
 import { LabelEditor } from './LabelEditor';
+import { AssigneeEditor } from './AssigneeEditor';
 import { StateSelector } from './StateSelector';
 import { PrioritySelector } from './PrioritySelector';
 import { MilestonePicker } from '../milestones/MilestonePicker';
@@ -510,6 +511,35 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                       <div className={styles.labelEditor}>
                         {issue.labels.map((l) => (
                           <span key={l.text} className={styles.labelChip}>{l.text}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className={`${styles.sidebarFieldValue} ${styles.sidebarEmpty}`}>none</span>
+                    )}
+                  </div>
+
+                  <div className={styles.sidebarField}>
+                    <span className={styles.sidebarFieldLabel}>assignees</span>
+                    {(isDelegate || isAuthor) ? (
+                      <AssigneeEditor
+                        assignees={issue.assignees ?? []}
+                        onChange={async (next) => {
+                          try {
+                            await invoke('assign_issue', {
+                              rid: issue.rid,
+                              issueId: issue.id,
+                              assignees: next.map((a) => a.did),
+                            });
+                            actionsOnRefresh();
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                      />
+                    ) : (issue.assignees && issue.assignees.length > 0) ? (
+                      <div className={styles.labelEditor}>
+                        {issue.assignees.map((a) => (
+                          <span key={a.did} className={styles.labelChip} title={a.did}>@{a.alias}</span>
                         ))}
                       </div>
                     ) : (

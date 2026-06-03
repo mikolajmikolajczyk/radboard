@@ -12,6 +12,11 @@ export interface RepoInfo {
 }
 
 // Raw issue data as returned by the list_issues Tauri command
+export interface AssigneeRef {
+  did: string;
+  alias: string;
+}
+
 export interface RawIssueData {
   id: string;
   rootId: string;
@@ -22,6 +27,7 @@ export interface RawIssueData {
   state: 'open' | 'closed' | 'solved';
   createdAt: number; // millis
   labels: string[];
+  assignees: AssigneeRef[];
   reactions: { emoji: string; authors: string[] }[];
   comments: RawCommentData[];
   commentCount: number;

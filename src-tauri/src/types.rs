@@ -154,9 +154,17 @@ pub struct IssueData {
     pub state: String,
     pub created_at: u64,
     pub labels: Vec<String>,
+    pub assignees: Vec<AssigneeRef>,
     pub reactions: Vec<ReactionData>,
     pub comments: Vec<CommentData>,
     pub comment_count: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssigneeRef {
+    pub did: String,
+    pub alias: String,
 }
 
 #[derive(Serialize)]
