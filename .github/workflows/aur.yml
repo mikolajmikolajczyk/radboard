@@ -1,0 +1,87 @@
+name: Publish to AUR (radboard-bin)
+
+# Triggers AFTER the release workflow has uploaded the .deb to the VPS.
+# We wait for it via a separate `workflow_run` event so the URL is live
+# before makepkg tries to fetch it.
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Extract version
+        id: ver
+        run: |
+          VERSION=${{ github.event.workflow_run.head_branch }}
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for .deb to be live on VPS
+        run: |
+          URL="https://dl.mikolajczyk.org/radboard/v${{ steps.ver.outputs.version }}/radboard-amd64.deb"
+          for i in $(seq 1 30); do
+            if curl -fsSL --head "$URL" >/dev/null; then
+              echo "live: $URL"
+              exit 0
+            fi
+            echo "attempt $i: not yet, sleeping 20s"
+            sleep 20
+          done
+          echo "timed out waiting for $URL"
+          exit 1
+
+      - name: Compute sha256
+        id: sum
+        run: |
+          URL="https://dl.mikolajczyk.org/radboard/v${{ steps.ver.outputs.version }}/radboard-amd64.deb"
+          SUM=$(curl -fsSL "$URL" | sha256sum | awk '{print $1}')
+          echo "sha=$SUM" >> "$GITHUB_OUTPUT"
+
+      - name: Setup SSH for AUR
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            User aur
+          EOF
+
+      - name: Clone AUR repo
+        run: git clone ssh://aur@aur.archlinux.org/radboard-bin.git aur-repo
+
+      - name: Update PKGBUILD + regenerate .SRCINFO
+        run: |
+          cp packaging/aur/PKGBUILD aur-repo/PKGBUILD
+          cd aur-repo
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.ver.outputs.version }}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('${{ steps.sum.outputs.sha }}')/" PKGBUILD
+          # Generate .SRCINFO in a container to avoid pulling makepkg on the runner.
+          docker run --rm -v "$PWD":/pkg -w /pkg archlinux:latest \
+            bash -c "pacman -Sy --noconfirm pacman-contrib && \
+                     useradd -m builder && chown -R builder /pkg && \
+                     su builder -c 'makepkg --printsrcinfo' > .SRCINFO"
+
+      - name: Commit + push
+        run: |
+          cd aur-repo
+          git config user.email "mikolajczyk.mikolajm@gmail.com"
+          git config user.name "radboard release bot"
+          git add PKGBUILD .SRCINFO
+          if git diff --cached --quiet; then
+            echo "nothing changed"
+            exit 0
+          fi
+          git commit -m "v${{ steps.ver.outputs.version }}"
+          git push origin master
