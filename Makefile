@@ -42,14 +42,14 @@ release:
 	git-cliff --tag "v$(VERSION)" -o CHANGELOG.md
 	git add CHANGELOG.md
 	git commit -m "release: v$(VERSION)"
-	git tag "v$(VERSION)"
+	git tag -a "v$(VERSION)" -m "v$(VERSION)"
 	git push origin master --tags
 	git push rad master --tags
 
 # Re-tag and force-push the current version without bumping (for fixing a bad release)
 rerelease:
 	@echo "Re-releasing v$(CURRENT_VERSION)..."
-	git tag -f "v$(CURRENT_VERSION)"
+	git tag -f -a "v$(CURRENT_VERSION)" -m "v$(CURRENT_VERSION)"
 	git push --force origin "refs/tags/v$(CURRENT_VERSION)"
 	git push --force rad "refs/tags/v$(CURRENT_VERSION)"
 
