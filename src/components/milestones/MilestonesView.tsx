@@ -129,6 +129,8 @@ function statusColor(status: string, columnColors: Record<string, string>): stri
 }
 
 function statusLabel(issue: IssueDetailType): string {
+  // Closed/solved issues always show their terminal status, ignoring any lingering state:* label.
+  if (issue.status !== 'open') return issue.status;
   const stateLabel = issue.labels.find((l) => l.text.startsWith('state:'));
   if (stateLabel) return stateLabel.text.slice(6);
   return issue.status;
