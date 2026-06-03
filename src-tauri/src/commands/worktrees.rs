@@ -705,7 +705,7 @@ pub fn squash_commits(
     }
 
     let out = std::process::Command::new("git")
-        .args(["rebase", "-i", &format!("{target_oid}~1")])
+        .args(["rebase", "-i", "--autostash", &format!("{target_oid}~1")])
         .env("GIT_SEQUENCE_EDITOR", &seq_script)
         .env("GIT_EDITOR", &editor_script)
         .current_dir(dir)
@@ -783,8 +783,12 @@ fn run_scripted_rebase(
         base_branch.to_string()
     };
 
+    // --autostash lets the rebase run even with unstaged/untracked changes; git
+    // will stash them before and pop them after. Otherwise rebase aborts with
+    // "you have unstaged changes" the moment any file in the worktree differs
+    // from HEAD — which is the common case in this dialog.
     let out = std::process::Command::new("git")
-        .args(["rebase", "-i", &rebase_onto])
+        .args(["rebase", "-i", "--autostash", &rebase_onto])
         .env("GIT_SEQUENCE_EDITOR", &seq_script)
         .env("GIT_EDITOR", &editor_script)
         .current_dir(dir)

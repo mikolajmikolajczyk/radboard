@@ -12,8 +12,13 @@
 .card.selected { border-color: rgba(93, 228, 199, 0.4); }
 
 .card.skipped {
-  opacity: 0.5;
   border-style: dashed;
+}
+
+.card.skipped .hash,
+.card.skipped .timestamp,
+.card.skipped .messageInput {
+  opacity: 0.65;
 }
 
 .topRow {

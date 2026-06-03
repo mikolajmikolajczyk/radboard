@@ -121,23 +121,23 @@ export default function PatchFromWorktreeModal({
       .catch((e) => setError(String(e)))
       .finally(() => setLoadingFiles(false));
 
-    // Load existing commits (update mode)
-    if (mode === 'update') {
-      setLoadingCommits(true);
-      invoke<PatchCommitEntry[]>('get_patch_commits', {
-        worktreePath,
-        baseBranch: defaultBranch,
+    // Load existing commits — works for both create and update modes.
+    // In create mode the user may already have commits on top of the base branch
+    // (e.g. authored before opening this dialog); they need to appear and be usable.
+    setLoadingCommits(true);
+    invoke<PatchCommitEntry[]>('get_patch_commits', {
+      worktreePath,
+      baseBranch: defaultBranch,
+    })
+      .then((raw) => {
+        const enriched = raw.map((c, i) => enrichCommit(c, i, raw.length));
+        setCommits(enriched);
+        if (enriched.length > 0) {
+          setSelectedCommitOid(enriched[enriched.length - 1].oid);
+        }
       })
-        .then((raw) => {
-          const enriched = raw.map((c, i) => enrichCommit(c, i, raw.length));
-          setCommits(enriched);
-          if (enriched.length > 0) {
-            setSelectedCommitOid(enriched[enriched.length - 1].oid);
-          }
-        })
-        .catch((e) => setError(String(e)))
-        .finally(() => setLoadingCommits(false));
-    }
+      .catch((e) => setError(String(e)))
+      .finally(() => setLoadingCommits(false));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Diff: show selected commit's diff OR selected file's diff --
@@ -182,6 +182,10 @@ export default function PatchFromWorktreeModal({
   }
 
   async function handleRewriteMessage(oid: string, newMessage: string) {
+    // Capture position BEFORE the rewrite so we know which slot to reselect.
+    // Rewriting a commit also rewrites every descendant, so the original oid
+    // disappears from the list — we must pick by index, never by old oid.
+    const prevIdx = commits.findIndex((c) => c.oid === oid);
     setOperating(true);
     setError(null);
     try {
@@ -193,9 +197,12 @@ export default function PatchFromWorktreeModal({
       });
       const enriched = enrichAll(updated);
       setCommits(enriched);
-      const idx = commits.findIndex((c) => c.oid === oid);
-      if (idx >= 0 && idx < enriched.length) {
-        setSelectedCommitOid(enriched[idx].oid);
+      if (enriched.length === 0) {
+        setSelectedCommitOid(null);
+      } else if (prevIdx >= 0 && prevIdx < enriched.length) {
+        setSelectedCommitOid(enriched[prevIdx].oid);
+      } else {
+        setSelectedCommitOid(enriched[enriched.length - 1].oid);
       }
     } catch (e) {
       setError(String(e));
@@ -223,8 +230,12 @@ export default function PatchFromWorktreeModal({
       });
       const enriched = enrichAll(updated);
       setCommits(enriched);
-      if (idx - 1 < enriched.length) {
+      if (enriched.length === 0) {
+        setSelectedCommitOid(null);
+      } else if (idx - 1 < enriched.length) {
         setSelectedCommitOid(enriched[idx - 1].oid);
+      } else {
+        setSelectedCommitOid(enriched[enriched.length - 1].oid);
       }
     } catch (e) {
       setError(String(e));
