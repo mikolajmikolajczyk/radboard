@@ -50,7 +50,27 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+          # Fetch host keys, then verify each fingerprint against the values
+          # published by the AUR (https://wiki.archlinux.org/title/AUR_submission_guidelines)
+          # before trusting them. Refuse to continue if any key is unexpected.
+          ssh-keyscan -t ed25519,ecdsa,rsa aur.archlinux.org > /tmp/aur_keys
+          declare -A EXPECTED=(
+            [ED25519]="SHA256:RFzBCUItH9LZS0cKB5UE6ceAYhBD5C8GeOBip8Z11+4"
+            [ECDSA]="SHA256:uTa/0PndEgPZTf76e1DFqXKJEXKsn7m9ivhLQtzGOCI"
+            [RSA]="SHA256:5s5cIyReIfNNVGRFdDbe3hdYiI5OelHGpw2rOUud3Q8"
+          )
+          while read -r line; do
+            [ -z "$line" ] && continue
+            print=$(echo "$line" | ssh-keygen -lf - 2>/dev/null) || continue
+            sum=$(awk '{print $2}' <<<"$print")
+            alg=$(awk '{print $NF}' <<<"$print" | tr -d '()')
+            if [ "$sum" != "${EXPECTED[$alg]}" ]; then
+              echo "REFUSING: $alg fingerprint mismatch: got $sum, expected ${EXPECTED[$alg]}"
+              exit 1
+            fi
+            echo "verified $alg: $sum"
+          done < /tmp/aur_keys
+          mv /tmp/aur_keys ~/.ssh/known_hosts
           cat > ~/.ssh/config <<EOF
           Host aur.archlinux.org
             IdentityFile ~/.ssh/aur
