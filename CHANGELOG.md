@@ -1,4 +1,15 @@
 # Changelog
+## v0.5.1 — 2026-06-03
+
+### Bug Fixes
+
+- annotated tags in release/rerelease so signed-tag config works
+- verify AUR host keys against published fingerprints before trusting them
+
+### Features
+
+- AUR radboard-bin package + auto-publish workflow
+
 ## v0.5.0 — 2026-06-03
 
 ### Bug Fixes
