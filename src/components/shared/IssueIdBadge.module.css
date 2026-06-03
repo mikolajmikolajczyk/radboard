@@ -1,0 +1,40 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 0.78em;
+  line-height: 1.4;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--fg-muted, #888);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.badge:hover {
+  color: var(--fg);
+  border-color: var(--fg-muted, #888);
+  background: var(--surface, transparent);
+}
+
+.copied {
+  color: #86efac;
+  border-color: #86efac;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.text {
+  letter-spacing: 0.02em;
+}

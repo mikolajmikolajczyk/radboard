@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { IssueDetail as IssueDetailType } from '../../types/kanban';
 import { useRepo } from '../../contexts/RepoContext';
 import { FilterChip } from '../../ui';
+import { IssueIdBadge } from '../shared/IssueIdBadge';
 import styles from './MilestonesView.module.css';
 
 // ── Semver helpers ──────────────────────────────────────────────────────────────
@@ -246,6 +247,7 @@ export default function MilestonesView({ issueDetails, milestonePrefix, onSelect
                       <span className={styles.badge} style={{ color, borderColor: color }}>
                         {sl}
                       </span>
+                      <IssueIdBadge id={issue.id} />
                       <span className={styles.issueTitle}>{issue.title}</span>
                       <span className={styles.issueAuthor}>{issue.author}</span>
                     </button>

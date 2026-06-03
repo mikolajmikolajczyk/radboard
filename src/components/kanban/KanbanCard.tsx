@@ -1,5 +1,6 @@
 import type { Issue, IssueLabel, IssueIndicator } from '../../types/kanban';
 import { formatMilestoneDisplay } from '../milestones/MilestonesView';
+import { IssueIdBadge } from '../shared/IssueIdBadge';
 import styles from './KanbanCard.module.css';
 
 interface Props {
@@ -58,10 +59,7 @@ export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, 
     >
       {issue.solved && <span className={styles.solvedBadge}>solved</span>}
       <div className={styles.meta}>
-        <span className={styles.issueId}>
-          <span className={styles.idDot} />
-          {issue.id.slice(0, 7)}
-        </span>
+        <IssueIdBadge id={issue.id} className={styles.issueId} />
         {onBan && (
           <button
             className={styles.banBtn}

@@ -7,6 +7,7 @@ import { useActions } from '../../contexts/ActionsContext';
 import { FilterChip, useResizableDivider, useOutsideClick } from '../../ui';
 import { PrioritySelector } from './PrioritySelector';
 import { formatMilestoneDisplay } from '../milestones/MilestonesView';
+import { IssueIdBadge } from '../shared/IssueIdBadge';
 import styles from './IssuesView.module.css';
 
 type Filter = 'all' | 'open' | 'closed' | string; // string covers dynamic state: labels
@@ -259,6 +260,7 @@ export default function IssuesView({
                 className={`${styles.row} ${selectedIssueId === issue.id ? styles.rowActive : ''}`}
                 onClick={() => { setCreatingNew(false); onSelectIssue(issue.id); }}
               >
+                <IssueIdBadge id={issue.id} />
                 {(() => {
                   const colId = issue.status === 'closed' || issue.status === 'solved'
                     ? (issue.status === 'solved' ? 'solved' : 'closed')

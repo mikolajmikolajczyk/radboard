@@ -12,6 +12,7 @@ import PatchDiffModal from '../patches/PatchDiffModal';
 import { MarkdownBody } from '../shared/MarkdownBody';
 import { MarkdownEditor } from '../shared/MarkdownEditor';
 import { ReactionBar } from '../shared/ReactionBar';
+import { IssueIdBadge } from '../shared/IssueIdBadge';
 import { EmojiPicker } from '../shared/EmojiPicker';
 import { CommentThread } from '../shared/CommentThread';
 import { LabelEditor } from './LabelEditor';
@@ -309,6 +310,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                 <span className={styles.idDot} />
                 {issue.id.slice(0, 8)}…
               </span>
+              <IssueIdBadge id={issue.id} title="Click to copy full issue id" />
               <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
                 ✕
               </button>
