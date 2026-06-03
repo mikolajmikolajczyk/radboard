@@ -7,21 +7,30 @@ on:
   workflow_run:
     workflows: ["Release"]
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.5.1)"
+        required: true
 
 jobs:
   publish:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Extract version
         id: ver
         run: |
-          VERSION=${{ github.event.workflow_run.head_branch }}
-          VERSION=${VERSION#v}
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.event.workflow_run.head_branch }}"
+            VERSION=${VERSION#v}
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Wait for .deb to be live on VPS
