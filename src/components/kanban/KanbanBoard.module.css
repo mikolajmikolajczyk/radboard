@@ -8,6 +8,78 @@
   user-select: none;
 }
 
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px 0;
+  flex-wrap: wrap;
+}
+
+.toolbarDropdownWrap {
+  position: relative;
+}
+
+.toolbarDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-3);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+}
+
+.toolbarOption {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-3);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.toolbarOption:hover { background: var(--bg-card); }
+.toolbarOptionActive { background: rgba(93, 228, 199, 0.07); }
+
+.toolbarOptionMode {
+  color: var(--text-7);
+  text-align: center;
+}
+.toolbarOptionOn { color: #5de4c7; }
+
+.toolbarOptionText { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
+.toolbarOptionCount { color: var(--text-7); font-size: 10px; }
+
+.toolbarClear {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-top: 0.5px solid var(--border-2);
+  color: var(--text-5);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+.toolbarClear:hover { color: var(--text-2); }
+
 .board > * {
   flex: 0 0 calc((100% - 12px * (var(--visible-cols, 4) - 1)) / var(--visible-cols, 4));
   min-width: 0;

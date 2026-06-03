@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import type { KanbanColumnData, Issue, PriorityLevel } from '../../types/kanban';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
+import { FilterChip, useOutsideClick } from '../../ui';
 import styles from './KanbanBoard.module.css';
 
 const SWATCHES: (string | null)[] = [
@@ -82,6 +83,35 @@ export default function KanbanBoard({
   delegateDids = [],
   myDid = null,
 }: Props) {
+  const [labelFilters, setLabelFilters] = useState<Set<string>>(new Set());
+  const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const labelDropdownRef = useRef<HTMLDivElement>(null);
+  useOutsideClick(labelDropdownRef, () => setLabelDropdownOpen(false), labelDropdownOpen);
+
+  // Collect labels visible on any card across all columns (state:* are columns
+  // themselves, so we skip them; cards already have priority:/milestone:
+  // stripped upstream — see App.tsx).
+  const allLabels = [...new Set(
+    columns.flatMap((c) => c.issues.flatMap((i) => i.labels.map((l) => l.text)))
+      .filter((t) => !t.startsWith('state:')),
+  )];
+
+  function toggleLabelFilter(label: string) {
+    setLabelFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  }
+
+  // OR semantics: a card matches if it carries any of the selected labels.
+  const filteredColumns: KanbanColumnData[] = labelFilters.size === 0
+    ? columns
+    : columns.map((c) => ({
+        ...c,
+        issues: c.issues.filter((i) => i.labels.some((l) => labelFilters.has(l.text))),
+      }));
+
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [insertInfo, setInsertInfo] = useState<InsertInfo | null>(null);
   const [colDraggingId, setColDraggingId] = useState<string | null>(null);
@@ -437,6 +467,58 @@ export default function KanbanBoard({
 
   return (
     <>
+      {allLabels.length > 0 && (
+        <div className={styles.toolbar}>
+          {[...labelFilters].map((label) => (
+            <FilterChip
+              key={label}
+              active
+              onClick={() => toggleLabelFilter(label)}
+              title="Click to remove"
+            >
+              {label} ✕
+            </FilterChip>
+          ))}
+          <div className={styles.toolbarDropdownWrap} ref={labelDropdownRef}>
+            <FilterChip
+              active={labelFilters.size > 0}
+              onClick={() => setLabelDropdownOpen((o) => !o)}
+            >
+              Label ▾
+            </FilterChip>
+            {labelDropdownOpen && (
+              <div className={styles.toolbarDropdown}>
+                {allLabels.map((label) => {
+                  const count = columns.reduce(
+                    (n, c) => n + c.issues.filter((i) => i.labels.some((l) => l.text === label)).length,
+                    0,
+                  );
+                  const active = labelFilters.has(label);
+                  return (
+                    <button
+                      key={label}
+                      className={`${styles.toolbarOption} ${active ? styles.toolbarOptionActive : ''}`}
+                      onClick={() => toggleLabelFilter(label)}
+                    >
+                      <span className={`${styles.toolbarOptionMode} ${active ? styles.toolbarOptionOn : ''}`}>
+                        {active ? '✓' : '·'}
+                      </span>
+                      <span className={styles.toolbarOptionText}>{label}</span>
+                      <span className={styles.toolbarOptionCount}>{count}</span>
+                    </button>
+                  );
+                })}
+                {labelFilters.size > 0 && (
+                  <button
+                    className={styles.toolbarClear}
+                    onClick={() => { setLabelFilters(new Set()); setLabelDropdownOpen(false); }}
+                  >Clear</button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div
         ref={boardRef}
         className={`${styles.board} ${isDraggingAnything ? styles.dragging : ''} ${isPanning ? styles.panning : ''}`}
@@ -445,7 +527,7 @@ export default function KanbanBoard({
         onPointerMove={handleBoardPointerMove}
         onPointerUp={handleBoardPointerUp}
       >
-        {columns.map((column) => (
+        {filteredColumns.map((column) => (
           <KanbanColumn
             key={column.id}
             column={column}
