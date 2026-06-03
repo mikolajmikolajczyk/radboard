@@ -1,4 +1,4 @@
-use crate::types::{FileStatus, PatchCommitEntry, WorktreeInfo};
+use crate::types::{FileStatus, PatchCommitEntry, WorktreeInfo, WorktreeSyncStatus};
 
 #[tauri::command]
 pub fn find_local_repo(rid: String) -> Result<Option<String>, String> {
@@ -178,6 +178,125 @@ pub fn create_worktree_from_patch(
         return Err(String::from_utf8_lossy(&output.stderr).to_string());
     }
     Ok(())
+}
+
+/// Report how far the worktree's HEAD has diverged from `base_branch` and
+/// which paths would conflict if the base were merged in. Pure read-only —
+/// uses `git merge-tree` so the worktree state is never touched.
+#[tauri::command]
+pub fn check_worktree_sync(
+    worktree_path: String,
+    base_branch: String,
+) -> Result<WorktreeSyncStatus, String> {
+    let dir = &worktree_path;
+
+    // rev-list --left-right --count base...HEAD → "behind\tahead"
+    let counts = std::process::Command::new("git")
+        .args([
+            "rev-list",
+            "--left-right",
+            "--count",
+            &format!("{base_branch}...HEAD"),
+        ])
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git rev-list failed: {e}"))?;
+    if !counts.status.success() {
+        return Err(String::from_utf8_lossy(&counts.stderr).into_owned());
+    }
+    let text = String::from_utf8_lossy(&counts.stdout);
+    let parts: Vec<&str> = text.trim().split_whitespace().collect();
+    let behind: u32 = parts.first().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let ahead: u32 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+
+    let mut conflicts = Vec::new();
+    if behind > 0 {
+        // `git merge-tree HEAD <base>` (git ≥ 2.38) does a dry-run 3-way merge
+        // using the auto-detected merge base. Output:
+        //   <tree-oid>
+        //   <conflict-info-lines>     ← omitted on clean merge
+        //   <blank line>
+        //   <descriptive messages>    ← human-readable conflict prose
+        //
+        // The conflict-info-lines have the form
+        //   <mode> <oid> <stage>\t<path>
+        // where stage is 1 (base), 2 (ours), 3 (theirs). Any stage > 0 means
+        // that path conflicts. NOTE: the process exits 0 even on conflict in
+        // recent git versions, so we must parse the body rather than check
+        // status.
+        let mt = std::process::Command::new("git")
+            .args(["merge-tree", "HEAD", &base_branch])
+            .current_dir(dir)
+            .output()
+            .map_err(|e| format!("git merge-tree failed: {e}"))?;
+        let s = String::from_utf8_lossy(&mt.stdout);
+        let mut seen = std::collections::HashSet::new();
+        for line in s.lines().skip(1) {
+            // Stop at the blank separator before the descriptive prose.
+            if line.is_empty() {
+                break;
+            }
+            // Format: "<mode> <oid> <stage>\t<path>"
+            let Some((meta, path)) = line.split_once('\t') else {
+                continue;
+            };
+            let stage = meta.split_whitespace().nth(2).and_then(|s| s.parse::<u32>().ok());
+            if stage.unwrap_or(0) > 0 && seen.insert(path.to_string()) {
+                conflicts.push(path.to_string());
+            }
+        }
+    }
+
+    Ok(WorktreeSyncStatus { ahead, behind, conflicts })
+}
+
+/// Bring a worktree up-to-date with `base_branch` via rebase or merge.
+/// On conflict the operation is aborted so the worktree returns to its
+/// original state — the user can re-run with a different strategy or
+/// resolve conflicts manually in a terminal.
+#[tauri::command]
+pub fn sync_worktree(
+    worktree_path: String,
+    base_branch: String,
+    strategy: String,
+) -> Result<String, String> {
+    let dir = &worktree_path;
+
+    // Best-effort fetch so a local-only base_branch reflects upstream changes.
+    // Ignore failures (offline, no remote, etc.) — the user may have pulled
+    // already, or be working entirely locally.
+    let _ = std::process::Command::new("git")
+        .args(["fetch", "--all", "--quiet"])
+        .current_dir(dir)
+        .output();
+
+    let args: Vec<String> = match strategy.as_str() {
+        "rebase" => vec!["rebase".into(), "--autostash".into(), base_branch.clone()],
+        "merge" => vec!["merge".into(), "--no-edit".into(), base_branch.clone()],
+        other => return Err(format!("Unknown sync strategy: {other}")),
+    };
+
+    let out = std::process::Command::new("git")
+        .args(&args)
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git {strategy} failed: {e}"))?;
+
+    if !out.status.success() {
+        // Abort so the user is never left mid-rebase / mid-merge.
+        let abort = if strategy == "rebase" { "rebase" } else { "merge" };
+        let _ = std::process::Command::new("git")
+            .args([abort, "--abort"])
+            .current_dir(dir)
+            .output();
+        return Err(format!(
+            "Sync via {strategy} from {base_branch} failed (likely conflicts). \
+             Worktree restored to its previous state.\n\n{}",
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+
+    Ok(format!("Synced via {strategy} from {base_branch}"))
 }
 
 #[tauri::command]

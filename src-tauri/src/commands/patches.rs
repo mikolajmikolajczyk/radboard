@@ -272,6 +272,61 @@ pub fn archive_patch(rid: String, patch_id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Dry-run merge of `patch_head` into `base_branch` inside the main clone.
+/// Reports how many commits the patch is behind the base and which paths
+/// would conflict. Pure read-only — uses `git merge-tree`.
+#[tauri::command]
+pub fn check_patch_sync(
+    local_repo_path: String,
+    base_branch: String,
+    patch_head: String,
+) -> Result<crate::types::WorktreeSyncStatus, String> {
+    let dir = &local_repo_path;
+
+    let counts = std::process::Command::new("git")
+        .args([
+            "rev-list",
+            "--left-right",
+            "--count",
+            &format!("{base_branch}...{patch_head}"),
+        ])
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("git rev-list failed: {e}"))?;
+    if !counts.status.success() {
+        return Err(String::from_utf8_lossy(&counts.stderr).into_owned());
+    }
+    let text = String::from_utf8_lossy(&counts.stdout);
+    let parts: Vec<&str> = text.trim().split_whitespace().collect();
+    let behind: u32 = parts.first().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let ahead: u32 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+
+    let mut conflicts = Vec::new();
+    if behind > 0 {
+        let mt = std::process::Command::new("git")
+            .args(["merge-tree", &patch_head, &base_branch])
+            .current_dir(dir)
+            .output()
+            .map_err(|e| format!("git merge-tree failed: {e}"))?;
+        let s = String::from_utf8_lossy(&mt.stdout);
+        let mut seen = std::collections::HashSet::new();
+        for line in s.lines().skip(1) {
+            if line.is_empty() {
+                break;
+            }
+            let Some((meta, path)) = line.split_once('\t') else {
+                continue;
+            };
+            let stage = meta.split_whitespace().nth(2).and_then(|s| s.parse::<u32>().ok());
+            if stage.unwrap_or(0) > 0 && seen.insert(path.to_string()) {
+                conflicts.push(path.to_string());
+            }
+        }
+    }
+
+    Ok(crate::types::WorktreeSyncStatus { ahead, behind, conflicts })
+}
+
 #[tauri::command]
 pub fn merge_patch(local_repo_path: String, default_branch: String, patch_head: String) -> Result<(), String> {
     let dir = &local_repo_path;

@@ -1,0 +1,90 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: start;
+  gap: 12px;
+}
+
+.label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-6);
+  padding-top: 6px;
+}
+
+.value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-2);
+  padding-top: 6px;
+  word-break: break-all;
+}
+
+.strategy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strategyOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--border-2);
+  border-radius: 5px;
+  cursor: pointer;
+  background: transparent;
+  transition: border-color 120ms, background 120ms;
+}
+
+.strategyOption:hover { border-color: var(--border-4); }
+
+.strategyActive {
+  border-color: rgba(93, 228, 199, 0.4);
+  background: rgba(93, 228, 199, 0.05);
+}
+
+.strategyOption span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.hint {
+  font-size: 10px;
+  color: var(--text-6);
+}
+
+.error {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #f87171;
+  padding: 8px 10px;
+  background: rgba(248, 113, 113, 0.06);
+  border: 0.5px solid rgba(248, 113, 113, 0.3);
+  border-radius: 5px;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.success {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #86efac;
+  padding: 8px 10px;
+  background: rgba(134, 239, 172, 0.06);
+  border: 0.5px solid rgba(134, 239, 172, 0.3);
+  border-radius: 5px;
+}

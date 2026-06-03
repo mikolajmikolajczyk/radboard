@@ -267,6 +267,17 @@ pub struct WorktreeInfo {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct WorktreeSyncStatus {
+    /// Commits on HEAD that the base branch does not have.
+    pub ahead: u32,
+    /// Commits on the base branch that HEAD does not have.
+    pub behind: u32,
+    /// Paths that would conflict if the base branch were merged into HEAD.
+    pub conflicts: Vec<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FileStatus {
     pub path: String,
     pub status: String, // raw 2-char porcelain code, e.g. "M ", " M", "??", "A "

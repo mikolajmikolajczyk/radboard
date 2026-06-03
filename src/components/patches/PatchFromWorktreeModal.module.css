@@ -13,6 +13,55 @@
   background: rgba(93, 228, 199, 0.15);
 }
 
+.syncBannerWarn,
+.syncBannerError {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 14px;
+  margin: 0 16px;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.syncBannerWarn {
+  background: rgba(249, 168, 37, 0.08);
+  color: #f59e0b;
+  border: 0.5px solid rgba(249, 168, 37, 0.30);
+}
+
+.syncBannerError {
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+  border: 0.5px solid rgba(248, 113, 113, 0.35);
+}
+
+.syncBannerTitle { font-size: 12px; font-weight: 500; }
+
+.syncConflictList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.syncHint {
+  font-size: 10px;
+  color: var(--text-5);
+  line-height: 1.4;
+}
+
+.syncHint code {
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+}
+
 .body {
   padding: 16px;
   display: flex;

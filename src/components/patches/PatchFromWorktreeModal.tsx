@@ -7,6 +7,7 @@ import { Modal, Button, useResizableDivider } from '../../ui';
 import { useRepo } from '../../contexts/RepoContext';
 import CommitCard, { enrichCommit, type EnrichedCommit } from './CommitCard';
 import UnstagedSection from './UnstagedSection';
+import SyncWorktreeModal from '../worktrees/SyncWorktreeModal';
 import {
   type ConventionalType,
   formatConventional,
@@ -50,6 +51,8 @@ export default function PatchFromWorktreeModal({
 
   const [commits, setCommits] = useState<EnrichedCommit[]>([]);
   const [loadingCommits, setLoadingCommits] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{ ahead: number; behind: number; conflicts: string[] } | null>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
   const [selectedCommitOid, setSelectedCommitOid] = useState<string | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [committedFiles, setCommittedFiles] = useState<Set<string>>(new Set());
@@ -138,7 +141,26 @@ export default function PatchFromWorktreeModal({
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoadingCommits(false));
+
+    // Sync status against the repo's default branch. Stay quiet on failure
+    // (no remote / wrong base) — better than an alarming banner for a check.
+    setSyncStatus(null);
+    invoke<{ ahead: number; behind: number; conflicts: string[] }>('check_worktree_sync', {
+      worktreePath,
+      baseBranch: defaultBranch,
+    })
+      .then(setSyncStatus)
+      .catch(() => setSyncStatus(null));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function refreshSyncStatus() {
+    invoke<{ ahead: number; behind: number; conflicts: string[] }>('check_worktree_sync', {
+      worktreePath,
+      baseBranch: defaultBranch,
+    })
+      .then(setSyncStatus)
+      .catch(() => setSyncStatus(null));
+  }
 
   // -- Diff: show selected commit's diff OR selected file's diff --
   useEffect(() => {
@@ -383,6 +405,31 @@ export default function PatchFromWorktreeModal({
         {mode === 'create' ? 'Create patch' : 'Update patch'}
       </Modal.Header>
 
+      {syncStatus && (syncStatus.behind > 0 || syncStatus.conflicts.length > 0) && (
+        <div className={syncStatus.conflicts.length > 0 ? styles.syncBannerError : styles.syncBannerWarn}>
+          {syncStatus.conflicts.length > 0 ? (
+            <>
+              <div className={styles.syncBannerTitle}>
+                {syncStatus.conflicts.length} file{syncStatus.conflicts.length === 1 ? '' : 's'} would conflict with <code>{defaultBranch}</code> — resolve conflicts in a terminal first
+              </div>
+              <ul className={styles.syncConflictList}>
+                {syncStatus.conflicts.map((p) => <li key={p}><code>{p}</code></li>)}
+              </ul>
+              <div className={styles.syncHint}>
+                Auto-sync would abort on these conflicts. Run <code>git rebase {defaultBranch}</code> (or <code>git merge {defaultBranch}</code>) in the worktree and resolve manually, then reopen this dialog.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.syncBannerTitle}>
+                {syncStatus.behind} commit{syncStatus.behind === 1 ? '' : 's'} behind <code>{defaultBranch}</code> — recommended to sync before {mode === 'create' ? 'creating' : 'updating'} the patch
+              </div>
+              <Button size="sm" onClick={() => setSyncOpen(true)}>Sync</Button>
+            </>
+          )}
+        </div>
+      )}
+
       <div className={styles.body}>
         <div
           className={styles.columns}
@@ -513,14 +560,35 @@ export default function PatchFromWorktreeModal({
             commits.length === 0 ||
             (mode === 'create' && !patchTitleInput.trim()) ||
             busy ||
-            loadingCommits
+            loadingCommits ||
+            (syncStatus?.conflicts.length ?? 0) > 0
           }
+          title={(syncStatus?.conflicts.length ?? 0) > 0 ? 'Resolve conflicts with base branch first' : undefined}
         >
           {submitting
             ? mode === 'create' ? 'Creating…' : 'Updating…'
             : mode === 'create' ? 'Create patch' : 'Update patch'}
         </Button>
       </Modal.Footer>
+      {syncOpen && (
+        <SyncWorktreeModal
+          open
+          worktreePath={worktreePath}
+          worktreeBranch={defaultBranch}
+          onClose={() => { setSyncOpen(false); refreshSyncStatus(); }}
+          onSuccess={() => {
+            refreshSyncStatus();
+            // Reload commits — rebase rewrites oids, merge adds a commit.
+            invoke<PatchCommitEntry[]>('get_patch_commits', { worktreePath, baseBranch: defaultBranch })
+              .then((raw) => {
+                const enriched = raw.map((c, i) => enrichCommit(c, i, raw.length));
+                setCommits(enriched);
+                if (enriched.length > 0) setSelectedCommitOid(enriched[enriched.length - 1].oid);
+              })
+              .catch((e) => setError(String(e)));
+          }}
+        />
+      )}
     </Modal>
   );
 }

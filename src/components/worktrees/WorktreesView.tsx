@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import PatchFromWorktreeModal from '../patches/PatchFromWorktreeModal';
+import SyncWorktreeModal from './SyncWorktreeModal';
 import { Button } from '../../ui';
 import type { WorktreeInfo, FileStatus } from '../../types/radboard';
 import styles from './WorktreesView.module.css';
@@ -42,6 +43,7 @@ export default function WorktreesView({ localRepoPath, preferredEditor, onFindIs
     patchId?: string;
     patchTitle?: string;
   } | null>(null);
+  const [syncModal, setSyncModal] = useState<{ path: string; branch: string } | null>(null);
 
   const refresh = useCallback(() => {
     if (!localRepoPath) return;
@@ -201,6 +203,13 @@ export default function WorktreesView({ localRepoPath, preferredEditor, onFindIs
                   >
                     {patchMode === 'create' ? '⎇ patch' : '⎇ update'}
                   </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setSyncModal({ path: wt.path, branch: wt.branch })}
+                    title="Sync worktree with a base branch (rebase / merge)"
+                  >
+                    Sync
+                  </Button>
                   <Button size="sm" variant="danger" onClick={() => handleRemoveClick(wt)} title="Remove worktree">
                     Remove
                   </Button>
@@ -231,6 +240,15 @@ export default function WorktreesView({ localRepoPath, preferredEditor, onFindIs
         onConfirm={confirmUpdateWorktree}
         onCancel={() => { setConfirmUpdate(null); setDirtyUpdateWarning(false); }}
       />
+      {syncModal && (
+        <SyncWorktreeModal
+          open
+          worktreePath={syncModal.path}
+          worktreeBranch={syncModal.branch}
+          onClose={() => setSyncModal(null)}
+          onSuccess={() => refresh()}
+        />
+      )}
       {patchModal && (
         <PatchFromWorktreeModal
           open

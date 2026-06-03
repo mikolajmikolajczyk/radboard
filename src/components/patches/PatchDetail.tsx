@@ -106,6 +106,7 @@ export default function PatchDetail({
   const [confirm, setConfirm] = useState<'archive' | 'merge' | null>(null);
   const [matchingWorktree, setMatchingWorktree] = useState<WorktreeInfo | null>(null);
   const [removeWorktree, setRemoveWorktree] = useState(true);
+  const [patchSync, setPatchSync] = useState<{ ahead: number; behind: number; conflicts: string[] } | null>(null);
 
   const [worktreeChanges, setWorktreeChanges] = useState<number | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -163,6 +164,20 @@ export default function PatchDetail({
         .catch(() => {});
     }
   }, [patch.id, rid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!localRepoPath || !patch.head || !defaultBranch) {
+      setPatchSync(null);
+      return;
+    }
+    invoke<{ ahead: number; behind: number; conflicts: string[] }>('check_patch_sync', {
+      localRepoPath,
+      baseBranch: defaultBranch,
+      patchHead: patch.head,
+    })
+      .then(setPatchSync)
+      .catch(() => setPatchSync(null));
+  }, [localRepoPath, defaultBranch, patch.head]);
 
   useEffect(() => {
     if (!matchingWorktree || !isViewActive) return;
@@ -539,16 +554,25 @@ export default function PatchDetail({
         <div className={styles.bottomBar}>
           <span className={styles.bottomBarLabel}>Actions</span>
           {/* Merge: delegates only */}
-          {patch.state === 'open' && localRepoPath && delegateDids.includes(myDid) && (
-            <button
-              className={styles.mergeBtn}
-              onClick={() => setConfirm('merge')}
-              disabled={merging || archiving}
-              title={`Merge into ${defaultBranch} and push`}
-            >
-              {merging ? 'Merging…' : '⎇ Merge'}
-            </button>
-          )}
+          {patch.state === 'open' && localRepoPath && delegateDids.includes(myDid) && (() => {
+            const blocked = (patchSync?.conflicts.length ?? 0) > 0;
+            const stale = !blocked && (patchSync?.behind ?? 0) > 0;
+            const tip = blocked
+              ? `Cannot merge: ${patchSync!.conflicts.length} file${patchSync!.conflicts.length === 1 ? '' : 's'} conflict with ${defaultBranch}. Patch author must rebase first.`
+              : stale
+                ? `${patchSync!.behind} commit${patchSync!.behind === 1 ? '' : 's'} behind ${defaultBranch}; will create a merge commit.`
+                : `Merge into ${defaultBranch} and push`;
+            return (
+              <button
+                className={styles.mergeBtn}
+                onClick={() => setConfirm('merge')}
+                disabled={merging || archiving || blocked}
+                title={tip}
+              >
+                {merging ? 'Merging…' : blocked ? '⎇ Merge (blocked)' : stale ? '⎇ Merge (stale)' : '⎇ Merge'}
+              </button>
+            );
+          })()}
           {/* Lifecycle (archive): patch author or delegate */}
           {(patch.authorDid === myDid || delegateDids.includes(myDid)) && (
             <button

@@ -7,6 +7,7 @@ import type { RawCommentData, WorktreeInfo } from '../../types/radboard';
 import styles from './IssueDetail.module.css';
 import { worktreeBranchName } from '../../utils/names';
 import PatchFromWorktreeModal from '../patches/PatchFromWorktreeModal';
+import SyncWorktreeModal from '../worktrees/SyncWorktreeModal';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import PatchDiffModal from '../patches/PatchDiffModal';
 import { MarkdownBody } from '../shared/MarkdownBody';
@@ -95,6 +96,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
   const [currentBranch, setCurrentBranch] = useState<string>('');
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [worktreeSuffix, setWorktreeSuffix] = useState<string>('');
+  const [syncModal, setSyncModal] = useState<{ path: string; branch: string } | null>(null);
   const [patchModal, setPatchModal] = useState<{
     open: boolean;
     worktreePath: string;
@@ -689,6 +691,13 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                                 {mode === 'create' ? '⎇ patch' : '⎇ update'}
                               </button>
                               <button
+                                className={styles.worktreePatchBtn}
+                                onClick={() => setSyncModal({ path: w.path, branch: w.branch })}
+                                title="Sync this worktree with a base branch"
+                              >
+                                Sync
+                              </button>
+                              <button
                                 className={`${styles.worktreePatchBtn} ${styles.removeWorktreeBtn}`}
                                 onClick={() => confirmRemoveWorktree(w)}
                                 title="Remove this worktree"
@@ -778,6 +787,15 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
           </>
         )}
       </aside>
+      {syncModal && (
+        <SyncWorktreeModal
+          open
+          worktreePath={syncModal.path}
+          worktreeBranch={syncModal.branch}
+          onClose={() => setSyncModal(null)}
+          onSuccess={loadWorktrees}
+        />
+      )}
       {patchModal?.open && (
         <PatchFromWorktreeModal
           open={patchModal.open}
