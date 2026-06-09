@@ -361,11 +361,20 @@ export default function IssuesView({
         ) : (
           <div className={styles.list} ref={listRef}>
             {filtered.map((issue) => (
-              <button
+              <div
                 key={issue.id}
                 data-id={issue.id}
+                role="button"
+                tabIndex={0}
                 className={`${styles.row} ${selectedIssueId === issue.id ? styles.rowActive : ''} ${(issue.blockedBy?.length ?? 0) > 0 ? styles.rowBlocked : ''}`}
                 onClick={() => { setCreatingNew(false); onSelectIssue(issue.id); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setCreatingNew(false);
+                    onSelectIssue(issue.id);
+                  }
+                }}
               >
                 <IssueIdBadge id={issue.id} />
                 {(() => {
@@ -500,7 +509,7 @@ export default function IssuesView({
                   {issue.author.length > 7 ? issue.author.slice(0, 7) + '…' : issue.author}
                 </span>
                 <span className={styles.date}>{issue.createdAt.slice(0, 10)}</span>
-              </button>
+              </div>
             ))}
           </div>
         )}
