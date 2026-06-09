@@ -92,6 +92,7 @@ pub fn run() {
             pty_write,
             pty_resize,
             pty_kill,
+            sync_repo_fetch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

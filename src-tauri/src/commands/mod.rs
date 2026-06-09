@@ -4,6 +4,7 @@ pub mod identity;
 pub mod issues;
 pub mod notifications;
 pub mod patches;
+pub mod sync;
 pub mod terminal;
 pub mod worktrees;
 
@@ -13,5 +14,6 @@ pub use identity::*;
 pub use issues::*;
 pub use notifications::*;
 pub use patches::*;
+pub use sync::*;
 pub use terminal::*;
 pub use worktrees::*;

@@ -422,16 +422,18 @@ export default function App() {
     if (!activeRid || !setup) return;
     const rid = activeRid;
     const interval = setInterval(() => {
-      Promise.all([
-        invoke<RawIssueData[]>('list_issues', { rid }),
-        invoke<RawPatchData[]>('list_patches', { rid }),
-      ]).then(([issues, patches]) => {
-        setRawPatches(patches);
-        const columnOrder = setup.columnOrder?.[rid] ?? [];
-        const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
-        setColumns(cols);
-        setIssueDetails(details);
-      }).catch(console.error);
+      invoke('sync_repo_fetch', { rid }).catch(() => {}).finally(() => {
+        Promise.all([
+          invoke<RawIssueData[]>('list_issues', { rid }),
+          invoke<RawPatchData[]>('list_patches', { rid }),
+        ]).then(([issues, patches]) => {
+          setRawPatches(patches);
+          const columnOrder = setup.columnOrder?.[rid] ?? [];
+          const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
+          setColumns(cols);
+          setIssueDetails(details);
+        }).catch(console.error);
+      });
     }, 60_000);
     return () => clearInterval(interval);
   }, [activeRid, setup]); // eslint-disable-line react-hooks/exhaustive-deps
