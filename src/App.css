@@ -1,6 +1,20 @@
 /* Fonts — swap for @fontsource packages if bundling offline is needed */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap');
 
+/* Bundled color-emoji font — guarantees emoji glyphs on hosts without
+   an OS-provided emoji font (minimal WSL installs, slim distros). */
+@font-face {
+  font-family: 'Noto Color Emoji';
+  src: url('./assets/fonts/NotoColorEmoji.ttf') format('truetype');
+  font-display: swap;
+  unicode-range:
+    U+1F300-1F5FF, U+1F600-1F64F, U+1F680-1F6FF, U+1F700-1F77F,
+    U+1F780-1F7FF, U+1F800-1F8FF, U+1F900-1F9FF, U+1FA00-1FA6F,
+    U+1FA70-1FAFF, U+2600-26FF, U+2700-27BF, U+1F000-1F02F,
+    U+1F0A0-1F0FF, U+1F100-1F1FF, U+1F200-1F2FF, U+2300-23FF,
+    U+2B00-2BFF, U+3030, U+303D, U+3297, U+3299;
+}
+
 *,
 *::before,
 *::after {
@@ -13,6 +27,12 @@ body {
   background: var(--bg-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-family:
+    'IBM Plex Sans',
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Noto Color Emoji',
+    sans-serif;
 }
 
 /* ── Theme variables ───────────────────────────────────────────────────────── */
