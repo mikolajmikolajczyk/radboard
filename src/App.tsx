@@ -210,7 +210,7 @@ function issuesToColumns(
     // Implicit epic: any issue that has at least one child pointing at it
     // is treated as an epic even without the explicit `epic` label.
     const isEpic = raw.labels.includes('epic') || (childrenByParent.get(raw.id)?.length ?? 0) > 0;
-    const goodFirstIssue = raw.labels.includes('good-first-issue') || raw.labels.includes('good first issue');
+    const goodFirstIssue = raw.labels.includes('good-first-issue');
     const parentLabel = raw.labels.find((l) => l.startsWith('parent:'));
     const parentRaw = parentLabel ? parentLabel.slice('parent:'.length) : undefined;
     const parentId = parentRaw && HEX7_LABEL.test(parentRaw)
@@ -230,8 +230,7 @@ function issuesToColumns(
           !l.startsWith('blocked:') &&
           !l.startsWith('parent:') &&
           l !== 'epic' &&
-          l !== 'good-first-issue' &&
-          l !== 'good first issue',
+          l !== 'good-first-issue',
         )
         .map((l) => ({ text: l, variant: l })),
       milestones: milestones.length > 0 ? milestones : undefined,

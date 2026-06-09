@@ -291,10 +291,13 @@
   grid-column: 1;
 }
 
-.rowMain > .rowEpicPill {
+.rowMainRight {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .rowTitleLine {

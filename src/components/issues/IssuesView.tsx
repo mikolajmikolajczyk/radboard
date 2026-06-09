@@ -410,9 +410,6 @@ export default function IssuesView({
                     {issue.parentId && filteredById.has(issue.parentId) && (
                       <span className={styles.rowChildArrow} title="child of parent epic above">↳</span>
                     )}
-                    {issue.goodFirstIssue && (
-                      <span className={styles.rowGoodFirst} title="good first issue">🌱</span>
-                    )}
                     <span className={styles.rowTitle}>{issue.title}</span>
                   </div>
                   <div className={styles.rowPillsLine}>
@@ -501,11 +498,18 @@ export default function IssuesView({
                   );
                 })()}
                   </div>
-                  {issue.isEpic && (
-                    <span
-                      className={styles.rowEpicPill}
-                      title={issue.epicChildIds ? `epic with ${issue.epicChildIds.length} child${issue.epicChildIds.length === 1 ? '' : 'ren'}` : 'epic (no children yet)'}
-                    >epic{issue.epicChildIds ? ` ${issue.epicChildIds.length}` : ''}</span>
+                  {(issue.isEpic || issue.goodFirstIssue) && (
+                    <div className={styles.rowMainRight}>
+                      {issue.goodFirstIssue && (
+                        <span className={styles.rowGoodFirst} title="good first issue">🌱</span>
+                      )}
+                      {issue.isEpic && (
+                        <span
+                          className={styles.rowEpicPill}
+                          title={issue.epicChildIds ? `epic with ${issue.epicChildIds.length} child${issue.epicChildIds.length === 1 ? '' : 'ren'}` : 'epic (no children yet)'}
+                        >epic{issue.epicChildIds ? ` ${issue.epicChildIds.length}` : ''}</span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <span className={styles.author} title={issue.author}>
