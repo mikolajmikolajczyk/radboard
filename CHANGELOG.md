@@ -1,4 +1,10 @@
 # Changelog
+## v0.7.1 — 2026-06-09
+
+### Bug Fixes
+
+- surface backend errors when creating an issue
+
 ## v0.7.0 — 2026-06-09
 
 ### Features
