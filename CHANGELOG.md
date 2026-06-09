@@ -1,4 +1,15 @@
 # Changelog
+## v0.7.3 — 2026-06-09
+
+### Bug Fixes
+
+- wrap card pills instead of overflowing border (9d2b4ce)
+- preserve special-prefix labels when editing chip set
+
+### Features
+
+- redesign list with fixed columns and per-row chip stack
+
 ## v0.7.2 — 2026-06-09
 
 ### Bug Fixes
