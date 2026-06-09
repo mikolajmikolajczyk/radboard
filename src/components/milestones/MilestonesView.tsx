@@ -250,6 +250,11 @@ export default function MilestonesView({ issueDetails, milestonePrefix, onSelect
                         {sl}
                       </span>
                       <IssueIdBadge id={issue.id} />
+                      {issue.priority && (
+                        <span className={`${styles.priorityBadge} ${styles[`priority_${issue.priority}`]}`}>
+                          {issue.priority}
+                        </span>
+                      )}
                       <span className={styles.issueTitle}>{issue.title}</span>
                       <span className={styles.issueAuthor}>{issue.author}</span>
                     </button>

@@ -149,6 +149,22 @@
   text-align: center;
 }
 
+.priorityBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid;
+}
+
+.priority_critical { color: #f87171; background: rgba(248, 113, 113, 0.10); border-color: rgba(248, 113, 113, 0.35); }
+.priority_high     { color: #fbbf24; background: rgba(251, 191, 36, 0.10); border-color: rgba(251, 191, 36, 0.35); }
+.priority_medium   { color: #60a5fa; background: rgba(96, 165, 250, 0.10); border-color: rgba(96, 165, 250, 0.30); }
+.priority_low      { color: #9ca3af; background: rgba(156, 163, 175, 0.10); border-color: rgba(156, 163, 175, 0.30); }
+
 .issueTitle {
   flex: 1;
   font-size: 12px;
