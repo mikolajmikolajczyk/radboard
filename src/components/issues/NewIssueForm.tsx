@@ -20,6 +20,7 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
   const [labelInput, setLabelInput] = useState('');
   const [labelFocused, setLabelFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
       finalLabels = [...finalLabels, 'priority:medium'];
     }
     setSubmitting(true);
+    setError(null);
     try {
       const issueId = await invoke<string>('create_issue', {
         rid, title: title.trim(), description: description.trim(), labels: finalLabels,
@@ -78,6 +80,7 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
       onCreated(issueId);
     } catch (e) {
       console.error(e);
+      setError(String(e));
       setSubmitting(false);
     }
   }
@@ -149,6 +152,10 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
         </div>
         <span className={styles.hint}>Press Enter or , to add</span>
       </div>
+
+      {error && (
+        <div className={styles.errorBanner}>{error}</div>
+      )}
 
       <div className={styles.actions}>
         <Button onClick={onCancel} disabled={submitting}>Cancel</Button>
