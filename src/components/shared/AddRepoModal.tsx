@@ -18,6 +18,26 @@ interface Props {
 
 type Step = 'pick' | 'confirm';
 
+function fuzzyScore(query: string, name: string, desc: string, rid: string): number {
+  if (!query) return 0;
+  const q = query.toLowerCase();
+  const n = name.toLowerCase();
+  if (n === q) return 1000;
+  if (n.startsWith(q)) return 500;
+  if (n.includes(q)) return 300;
+  if (desc.toLowerCase().includes(q)) return 200;
+  if (rid.toLowerCase().includes(q)) return 150;
+  let ni = 0;
+  let matched = 0;
+  for (const ch of q) {
+    const idx = n.indexOf(ch, ni);
+    if (idx < 0) return -1;
+    ni = idx + 1;
+    matched++;
+  }
+  return matched > 0 ? 50 : -1;
+}
+
 export default function AddRepoModal({ open: isOpen, existingRids, onAdd, onClose }: Props) {
   const [repos, setRepos] = useState<RepoInfo[]>([]);
   const [step, setStep] = useState<Step>('pick');
@@ -25,6 +45,7 @@ export default function AddRepoModal({ open: isOpen, existingRids, onAdd, onClos
   const [localPath, setLocalPath] = useState('');
   const [scanning, setScanning] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,6 +57,7 @@ export default function AddRepoModal({ open: isOpen, existingRids, onAdd, onClos
       setStep('pick');
       setPendingRepo(null);
       setLocalPath('');
+      setSearch('');
     }
   }, [isOpen]);
 
@@ -66,7 +88,16 @@ export default function AddRepoModal({ open: isOpen, existingRids, onAdd, onClos
     onClose();
   }
 
-  const available = repos.filter((r) => !existingRids.includes(r.rid));
+  const baseAvailable = repos
+    .filter((r) => !existingRids.includes(r.rid))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const available = search
+    ? baseAvailable
+        .map((r) => ({ r, s: fuzzyScore(search, r.name, r.description ?? '', r.rid) }))
+        .filter((x) => x.s >= 0)
+        .sort((a, b) => b.s - a.s)
+        .map((x) => x.r)
+    : baseAvailable;
 
   return (
     <Modal open={isOpen} onClose={onClose} width="min(480px, 90vw)" style={{ maxHeight: '70vh' }}>
@@ -75,11 +106,24 @@ export default function AddRepoModal({ open: isOpen, existingRids, onAdd, onClos
       </Modal.Header>
 
       {step === 'pick' && (
-        available.length === 0 ? (
+        baseAvailable.length === 0 ? (
           <div className={styles.empty}>
             {repos.length === 0 ? 'Loading…' : 'All local repos are already added.'}
           </div>
         ) : (
+          <>
+          <input
+            className={styles.search}
+            type="text"
+            placeholder="search by name, description, or rid…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+          />
+          <div className={styles.scrollArea}>
+          {available.length === 0 ? (
+            <div className={styles.empty}>no matches</div>
+          ) : (
           <ul className={styles.list}>
             {available.map((repo) => (
               <li key={repo.rid}>
@@ -96,6 +140,9 @@ export default function AddRepoModal({ open: isOpen, existingRids, onAdd, onClos
               </li>
             ))}
           </ul>
+          )}
+          </div>
+          </>
         )
       )}
 

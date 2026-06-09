@@ -145,6 +145,30 @@
 
 /* ── Repo list ───────────────────────────────────────────────────────────────── */
 
+.repoSearch {
+  width: 100%;
+  padding: 9px 12px;
+  margin-bottom: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-3);
+  border-radius: 6px;
+  color: var(--text-1);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.repoSearch:focus { border-color: rgba(93, 228, 199, 0.5); }
+.repoSearch::placeholder { color: var(--text-6); }
+
+.repoScrollArea {
+  height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
 .repoList {
   list-style: none;
   margin: 0;

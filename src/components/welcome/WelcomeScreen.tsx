@@ -112,12 +112,42 @@ cd <name>
 git commit --allow-empty -m "Initial commit"
 rad init`;
 
+function fuzzyScoreRepo(query: string, name: string, desc: string, rid: string): number {
+  if (!query) return 0;
+  const q = query.toLowerCase();
+  const n = name.toLowerCase();
+  if (n === q) return 1000;
+  if (n.startsWith(q)) return 500;
+  if (n.includes(q)) return 300;
+  if (desc.toLowerCase().includes(q)) return 200;
+  if (rid.toLowerCase().includes(q)) return 150;
+  let ni = 0;
+  let matched = 0;
+  for (const ch of q) {
+    const idx = n.indexOf(ch, ni);
+    if (idx < 0) return -1;
+    ni = idx + 1;
+    matched++;
+  }
+  return matched > 0 ? 50 : -1;
+}
+
 function RepoPicker({ identity, repos, onSelect, onRefresh }: RepoPickerProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [pending, setPending] = useState<RepoInfo | null>(null);
   const [localPath, setLocalPath] = useState('');
   const [scanning, setScanning] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+
+  const sorted = [...repos].sort((a, b) => a.name.localeCompare(b.name));
+  const filtered = search
+    ? sorted
+        .map((r) => ({ r, s: fuzzyScoreRepo(search, r.name, r.description ?? '', r.rid) }))
+        .filter((x) => x.s >= 0)
+        .sort((a, b) => b.s - a.s)
+        .map((x) => x.r)
+    : sorted;
 
   function copy(text: string, key: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -218,28 +248,44 @@ function RepoPicker({ identity, repos, onSelect, onRefresh }: RepoPickerProps) {
           No local repositories found.
         </div>
       ) : (
-        <ul className={styles.repoList}>
-          {repos.map((repo) => (
-            <li key={repo.rid}>
-              <button className={styles.repoItem} onClick={() => selectRepo(repo)}>
-                <div className={styles.repoMain}>
-                  <span className={styles.repoName}>{repo.name}</span>
-                  {repo.description && (
-                    <span className={styles.repoDesc}>{repo.description}</span>
-                  )}
-                </div>
-                <div className={styles.repoMeta}>
-                  <span className={styles.repoRid}>{truncateRid(repo.rid)}</span>
-                  <span className={styles.repoBranch}>{repo.defaultBranch}</span>
-                  <span className={styles.repoDelegates}>
-                    {repo.delegateDids.length} {repo.delegateDids.length === 1 ? 'delegate' : 'delegates'}
-                  </span>
-                </div>
-                <span className={styles.repoArrow}>→</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <input
+            className={styles.repoSearch}
+            type="text"
+            placeholder="search by name, description, or rid…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+          />
+          <div className={styles.repoScrollArea}>
+            {filtered.length === 0 ? (
+              <div className={styles.emptyRepos}>no matches</div>
+            ) : (
+              <ul className={styles.repoList}>
+                {filtered.map((repo) => (
+                  <li key={repo.rid}>
+                    <button className={styles.repoItem} onClick={() => selectRepo(repo)}>
+                      <div className={styles.repoMain}>
+                        <span className={styles.repoName}>{repo.name}</span>
+                        {repo.description && (
+                          <span className={styles.repoDesc}>{repo.description}</span>
+                        )}
+                      </div>
+                      <div className={styles.repoMeta}>
+                        <span className={styles.repoRid}>{truncateRid(repo.rid)}</span>
+                        <span className={styles.repoBranch}>{repo.defaultBranch}</span>
+                        <span className={styles.repoDelegates}>
+                          {repo.delegateDids.length} {repo.delegateDids.length === 1 ? 'delegate' : 'delegates'}
+                        </span>
+                      </div>
+                      <span className={styles.repoArrow}>→</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
       )}
 
       <div className={styles.niDivider} />
