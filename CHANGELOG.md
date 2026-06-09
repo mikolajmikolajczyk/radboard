@@ -1,4 +1,17 @@
 # Changelog
+## v0.7.0 — 2026-06-09
+
+### Features
+
+- worktree + patch sync, with merge blocked on conflicts (bbff429)
+- link patches to issues via commit messages (3f444c0)
+- periodic sync of active repo (8cc8f01)
+- epics — parent/child issue grouping (c48c125)
+
+### docs
+
+- WSL launch flags and AUR install instructions
+
 ## v0.5.2 — 2026-06-03
 
 ### Bug Fixes
