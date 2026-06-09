@@ -355,6 +355,13 @@
   user-select: none;
 }
 
+.rowGoodFirst {
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 3px rgba(134, 239, 172, 0.5));
+}
+
 .rowLabels {
   display: flex;
   gap: 3px;

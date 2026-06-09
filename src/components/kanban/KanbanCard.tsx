@@ -61,6 +61,9 @@ export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, 
       onClick={() => onClick(issue.id)}
     >
       {issue.solved && <span className={styles.solvedBadge}>solved</span>}
+      {issue.goodFirstIssue && (
+        <span className={styles.goodFirstBadge} title="good first issue — friendly for newcomers">🌱</span>
+      )}
       <div className={styles.meta}>
         <IssueIdBadge id={issue.id} className={styles.issueId} />
         {onBan && (

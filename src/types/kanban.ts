@@ -54,6 +54,8 @@ export interface Issue {
   parentId?: string;
   /** Full ids of loaded issues whose `parent:*` label resolves to this issue. */
   epicChildIds?: string[];
+  /** Issue carries the `good-first-issue` label — surfaced as a small leaf. */
+  goodFirstIssue?: boolean;
 }
 
 export interface KanbanColumnData {

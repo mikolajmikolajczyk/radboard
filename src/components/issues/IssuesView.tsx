@@ -410,6 +410,9 @@ export default function IssuesView({
                     {issue.parentId && filteredById.has(issue.parentId) && (
                       <span className={styles.rowChildArrow} title="child of parent epic above">↳</span>
                     )}
+                    {issue.goodFirstIssue && (
+                      <span className={styles.rowGoodFirst} title="good first issue">🌱</span>
+                    )}
                     <span className={styles.rowTitle}>{issue.title}</span>
                   </div>
                   <div className={styles.rowPillsLine}>
