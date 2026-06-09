@@ -23,6 +23,14 @@ interface Props {
   canDrag?: (issue: Issue) => boolean;
   onBan?: (issue: Issue) => (() => void) | undefined;
   onParentClick?: (parentId: string) => void;
+  openMode?: 'priority' | 'mostwanted';
+  onOpenModeChange?: (mode: 'priority' | 'mostwanted') => void;
+}
+
+function netScore(issue: Issue): number {
+  const up = issue.indicator?.upvotes ?? 0;
+  const down = issue.indicator?.downvotes ?? 0;
+  return up - down;
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -126,6 +134,8 @@ export default function KanbanColumn({
   canDrag,
   onBan,
   onParentClick,
+  openMode = 'priority',
+  onOpenModeChange,
 }: Props) {
   const colStyle = STATIC_STYLES[column.id] ?? styles.colDynamic;
   const isOpenColumn = column.id === 'open';
@@ -147,6 +157,10 @@ export default function KanbanColumn({
       }
     }
 
+    const wantedItems: Issue[] = openMode === 'mostwanted'
+      ? [...column.issues].sort((a, b) => netScore(b) - netScore(a))
+      : [];
+
     return (
       <div
         className={`${styles.column} ${colStyle} ${isColDragging ? styles.colDraggingSource : ''} ${isColInsertBefore ? styles.colInsertBefore : ''}`}
@@ -155,6 +169,18 @@ export default function KanbanColumn({
         <div className={styles.header} style={headerStyle} onContextMenu={onRightClick}>
           <span className={styles.title} style={titleStyle}>{column.title}</span>
           <div className={styles.headerRight}>
+            {onOpenModeChange && (
+              <div className={styles.modeToggle} role="group" title="Switch sort: Priority zones / Most wanted (net reactions)">
+                <button
+                  className={`${styles.modeBtn} ${openMode === 'priority' ? styles.modeBtnActive : ''}`}
+                  onClick={() => onOpenModeChange('priority')}
+                >prio</button>
+                <button
+                  className={`${styles.modeBtn} ${openMode === 'mostwanted' ? styles.modeBtnActive : ''}`}
+                  onClick={() => onOpenModeChange('mostwanted')}
+                >🔥</button>
+              </div>
+            )}
             {onNewIssue && (
               <button className={styles.addBtn} onClick={onNewIssue} title="New issue">+</button>
             )}
@@ -162,6 +188,40 @@ export default function KanbanColumn({
           </div>
         </div>
 
+        {openMode === 'mostwanted' ? (
+          <div className={styles.dropZone} style={dropZoneStyle} data-column-id={column.id}>
+            <div className={styles.mostWantedHint}>sorted by net reactions · synced peers only</div>
+            {wantedItems.length === 0 ? (
+              <div className={styles.empty}>no issues</div>
+            ) : wantedItems.map((issue) => {
+              const score = netScore(issue);
+              return (
+                <div
+                  key={issue.id}
+                  data-card-id={issue.id}
+                  onPointerDown={
+                    canDrag == null || canDrag(issue)
+                      ? (e: React.PointerEvent) => onPointerDown(e, issue)
+                      : undefined
+                  }
+                  className={styles.mostWantedRow}
+                >
+                  <KanbanCard
+                    issue={issue}
+                    isDragging={draggingId === issue.id}
+                    onPointerDown={() => {}}
+                    onClick={onIssueClick}
+                    onBan={onBan?.(issue)}
+                    onParentClick={onParentClick}
+                  />
+                  <span className={`${styles.scoreBadge} ${score > 0 ? styles.scorePositive : score < 0 ? styles.scoreNegative : styles.scoreZero}`}>
+                    {score > 0 ? `+${score}` : score === 0 ? '0' : `${score}`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
         <div
           className={`${styles.dropZone} ${styles.dropZoneZoned} ${isOver ? styles.dragOver : ''}`}
           style={dropZoneStyle}
@@ -226,6 +286,7 @@ export default function KanbanColumn({
             );
           })()}
         </div>
+        )}
       </div>
     );
   }

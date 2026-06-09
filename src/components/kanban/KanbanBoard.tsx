@@ -87,6 +87,7 @@ export default function KanbanBoard({
 }: Props) {
   const [labelFilters, setLabelFilters] = useState<Set<string>>(new Set());
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const [openMode, setOpenMode] = useState<'priority' | 'mostwanted'>('priority');
   const labelDropdownRef = useRef<HTMLDivElement>(null);
   useOutsideClick(labelDropdownRef, () => setLabelDropdownOpen(false), labelDropdownOpen);
 
@@ -558,6 +559,8 @@ export default function KanbanBoard({
               return canBan ? () => onBanUser(issue.authorDid, issue.author, 'all') : undefined;
             } : undefined}
             onParentClick={onParentClick}
+            openMode={openMode}
+            onOpenModeChange={setOpenMode}
           />
         ))}
       </div>
