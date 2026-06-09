@@ -100,8 +100,11 @@
 .footer {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  row-gap: 5px;
+  flex-wrap: wrap;
   margin-top: 8px;
+  min-width: 0;
 }
 
 /* Labels */
