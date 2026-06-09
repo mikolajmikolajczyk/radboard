@@ -42,6 +42,7 @@ export interface RawPatchData {
   state: 'open' | 'draft' | 'merged' | 'archived';
   createdAt: number;
   head: string;
+  commitSummaries: string[];
 }
 
 export interface RawPatchReviewData {

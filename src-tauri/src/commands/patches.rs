@@ -32,9 +32,14 @@ pub async fn list_patches(rid: String) -> Result<Vec<PatchData>, String> {
                 radicle::cob::patch::State::Archived       => "archived",
                 radicle::cob::patch::State::Merged { .. } => "merged",
             };
-            let head = patch.revisions().last()
-                .map(|(_, rev)| rev.head().to_string())
+            let (head, base) = patch.revisions().last()
+                .map(|(_, rev)| (rev.head().to_string(), rev.base().to_string()))
                 .unwrap_or_default();
+            let commit_summaries = if head.is_empty() || base.is_empty() {
+                Vec::new()
+            } else {
+                collect_commit_summaries(repo.path(), &base, &head)
+            };
             items.push(PatchData {
                 id: id.to_string(),
                 title: patch.title().to_owned(),
@@ -44,6 +49,7 @@ pub async fn list_patches(rid: String) -> Result<Vec<PatchData>, String> {
                 state: state.to_owned(),
                 created_at: patch.timestamp().as_millis() as u64,
                 head,
+                commit_summaries,
             });
         }
         Ok(items)
@@ -359,4 +365,20 @@ pub fn merge_patch(local_repo_path: String, default_branch: String, patch_head: 
     }
 
     Ok(())
+}
+
+fn collect_commit_summaries(git_dir: &std::path::Path, base: &str, head: &str) -> Vec<String> {
+    let out = std::process::Command::new("git")
+        .arg("--git-dir")
+        .arg(git_dir)
+        .args(["log", "--format=%s", &format!("{base}..{head}")])
+        .output();
+    let Ok(out) = out else { return Vec::new() };
+    if !out.status.success() {
+        return Vec::new();
+    }
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(|s| s.to_string())
+        .collect()
 }

@@ -95,6 +95,7 @@ pub struct PatchData {
     pub state: String,
     pub created_at: u64,
     pub head: String, // latest revision head commit (40-char hex)
+    pub commit_summaries: Vec<String>,
 }
 
 #[derive(Serialize)]

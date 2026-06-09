@@ -137,7 +137,7 @@ function issuesToColumns(
   const HEX7 = /[0-9a-f]{7}/gi;
   for (const patch of rawPatches) {
     const seen = new Set<string>();
-    const text = patch.title + ' ' + patch.description;
+    const text = patch.title + ' ' + patch.description + ' ' + (patch.commitSummaries ?? []).join(' ');
     for (const m of text.matchAll(HEX7)) {
       const key = m[0].toLowerCase();
       if (seen.has(key)) continue;
