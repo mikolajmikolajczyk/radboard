@@ -12,7 +12,8 @@ interface Props {
 }
 
 export default function NewIssueForm({ onCreated, onCancel }: Props) {
-  const { rid, labelSuggestions } = useRepo();
+  const { rid, labelSuggestions, myDid, delegateDids } = useRepo();
+  const isDelegate = myDid !== null && delegateDids.includes(myDid);
   const { onRefresh } = useActions();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -67,7 +68,12 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
     if (!title.trim() || submitting) return;
     const pending = labelInput.trim().replace(/,$/, '');
     let finalLabels = pending && !labels.includes(pending) ? [...labels, pending] : labels;
-    if (!finalLabels.some((l) => l.startsWith('priority:'))) {
+    // Only delegates can apply labels at creation time — for everyone else
+    // strip them and skip the priority:medium default. They can ask a
+    // delegate to label the issue after the fact.
+    if (!isDelegate) {
+      finalLabels = [];
+    } else if (!finalLabels.some((l) => l.startsWith('priority:'))) {
       finalLabels = [...finalLabels, 'priority:medium'];
     }
     setSubmitting(true);
@@ -111,6 +117,14 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
         />
       </div>
 
+      {!isDelegate && (
+        <div className={styles.hint} style={{ paddingTop: 4 }}>
+          Only delegates can apply labels. Your issue will be created without
+          labels — ask a delegate to label it.
+        </div>
+      )}
+
+      {isDelegate && (
       <div className={styles.field}>
         Labels <span className={styles.optional}>(optional)</span>
         <div className={styles.labelWrap}>
@@ -152,6 +166,7 @@ export default function NewIssueForm({ onCreated, onCancel }: Props) {
         </div>
         <span className={styles.hint}>Press Enter or , to add</span>
       </div>
+      )}
 
       {error && (
         <div className={styles.errorBanner}>{error}</div>
