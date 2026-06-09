@@ -149,6 +149,38 @@
   opacity: 1;
 }
 
+/* Epic / parent pills */
+.epicPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(167, 139, 250, 0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.30);
+}
+
+.parentPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(167, 139, 250, 0.08);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  cursor: pointer;
+}
+
+.parentPill:hover {
+  background: rgba(167, 139, 250, 0.18);
+}
+
+.parentPillOrphan {
+  color: #f59e0b;
+  background: rgba(249, 168, 37, 0.08);
+  border-color: rgba(249, 168, 37, 0.25);
+}
+
 /* Assignee chip */
 .assignee {
   font-family: 'JetBrains Mono', monospace;

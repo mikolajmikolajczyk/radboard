@@ -362,6 +362,36 @@
   border: 1px solid rgba(249, 168, 37, 0.25);
 }
 
+.rowEpicPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(167, 139, 250, 0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.30);
+}
+
+.rowParentPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(167, 139, 250, 0.08);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  cursor: pointer;
+}
+
+.rowParentPill:hover { background: rgba(167, 139, 250, 0.18); }
+
+.rowParentPillOrphan {
+  color: #f59e0b;
+  background: rgba(249, 168, 37, 0.08);
+  border-color: rgba(249, 168, 37, 0.25);
+  cursor: default;
+}
+
 .rowBlocked .rowTitle,
 .rowBlocked .rowLabels,
 .rowBlocked .author,

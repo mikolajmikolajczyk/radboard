@@ -3,7 +3,7 @@ import type { IssueComment, PatchRef, PriorityLevel } from '../types/kanban';
 import type { FileDiff } from '../components/patches/DiffView';
 
 interface ActionsContextValue {
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
   onBanUser: (did: string, alias: string, scope: 'all' | 'issues' | 'comments') => void;
   onUnbanUser: (did: string) => void;
   onStateChange: (issueId: string, colId: string) => void;

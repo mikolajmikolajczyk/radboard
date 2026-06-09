@@ -46,6 +46,14 @@ export interface Issue {
   indicator?: IssueIndicator;
   solved?: boolean;
   priority?: PriorityLevel;
+  /** True if this issue has the `epic` label — render as parent header. */
+  isEpic?: boolean;
+  /** Raw value from `parent:<value>` label — 7-char hex prefix. */
+  parentRaw?: string;
+  /** Resolved full id of the parent epic, if loaded in the current repo. */
+  parentId?: string;
+  /** Full ids of loaded issues whose `parent:*` label resolves to this issue. */
+  epicChildIds?: string[];
 }
 
 export interface KanbanColumnData {

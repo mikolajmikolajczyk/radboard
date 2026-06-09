@@ -9,6 +9,7 @@ interface Props {
   onPointerDown: (e: React.PointerEvent) => void;
   onClick: (id: string) => void;
   onBan?: () => void;
+  onParentClick?: (parentId: string) => void;
 }
 
 function formatAuthor(author: string): string {
@@ -50,7 +51,7 @@ function Indicator({ indicator }: { indicator: IssueIndicator }) {
   );
 }
 
-export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, onBan }: Props) {
+export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, onBan, onParentClick }: Props) {
   const isBlocked = (issue.blockedBy?.length ?? 0) > 0;
   const blockedTitle = issue.blockedBy?.map((b) => `blocked by ${b.linkedIssueId ? b.raw : b.raw}`).join('; ');
   return (
@@ -85,6 +86,24 @@ export default function KanbanCard({ issue, isDragging, onPointerDown, onClick, 
         {issue.blockedIssueIds && issue.blockedIssueIds.length > 0 && (
           <span className={styles.blocksPill} title={`blocks ${issue.blockedIssueIds.length} issue${issue.blockedIssueIds.length === 1 ? '' : 's'}`}>
             blocks {issue.blockedIssueIds.length}
+          </span>
+        )}
+        {issue.isEpic && (
+          <span className={styles.epicPill} title={issue.epicChildIds ? `epic with ${issue.epicChildIds.length} child${issue.epicChildIds.length === 1 ? '' : 'ren'}` : 'epic (no children yet)'}>
+            epic{issue.epicChildIds ? ` ${issue.epicChildIds.length}` : ''}
+          </span>
+        )}
+        {issue.parentRaw && (
+          <span
+            className={`${styles.parentPill} ${!issue.parentId ? styles.parentPillOrphan : ''}`}
+            title={issue.parentId ? 'open parent epic' : `parent ${issue.parentRaw} not loaded`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (issue.parentId && onParentClick) onParentClick(issue.parentId);
+            }}
+          >
+            ↑ #{issue.parentRaw}
           </span>
         )}
         {issue.milestones?.map((ms) => (

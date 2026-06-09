@@ -30,6 +30,7 @@ interface Props {
   onBanUser?: (did: string, alias: string, scope: 'all' | 'issues' | 'comments') => void;
   delegateDids?: string[];
   myDid?: string | null;
+  onParentClick?: (parentId: string) => void;
 }
 
 interface InsertInfo {
@@ -82,6 +83,7 @@ export default function KanbanBoard({
   onBanUser,
   delegateDids = [],
   myDid = null,
+  onParentClick,
 }: Props) {
   const [labelFilters, setLabelFilters] = useState<Set<string>>(new Set());
   const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
@@ -555,6 +557,7 @@ export default function KanbanBoard({
                 && !(bannedDids?.has(issue.authorDid));
               return canBan ? () => onBanUser(issue.authorDid, issue.author, 'all') : undefined;
             } : undefined}
+            onParentClick={onParentClick}
           />
         ))}
       </div>

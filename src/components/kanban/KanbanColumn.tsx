@@ -22,6 +22,7 @@ interface Props {
   onNewIssue?: () => void;
   canDrag?: (issue: Issue) => boolean;
   onBan?: (issue: Issue) => (() => void) | undefined;
+  onParentClick?: (parentId: string) => void;
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -67,6 +68,7 @@ function renderItems(
   onIssueClick: (id: string) => void,
   canDrag?: (issue: Issue) => boolean,
   onBan?: (issue: Issue) => (() => void) | undefined,
+  onParentClick?: (parentId: string) => void,
 ) {
   return (
     <AnimatePresence initial={false}>
@@ -98,6 +100,7 @@ function renderItems(
               onPointerDown={() => {}}
               onClick={onIssueClick}
               onBan={onBan?.(item.issue)}
+              onParentClick={onParentClick}
             />
           </motion.div>
         )
@@ -122,6 +125,7 @@ export default function KanbanColumn({
   onNewIssue,
   canDrag,
   onBan,
+  onParentClick,
 }: Props) {
   const colStyle = STATIC_STYLES[column.id] ?? styles.colDynamic;
   const isOpenColumn = column.id === 'open';
@@ -187,7 +191,7 @@ export default function KanbanColumn({
                   {items.length === 0 ? (
                     <div className={styles.zoneEmpty} />
                   ) : (
-                    renderItems(items, draggingId, onPointerDown, onIssueClick, canDrag, onBan)
+                    renderItems(items, draggingId, onPointerDown, onIssueClick, canDrag, onBan, onParentClick)
                   )}
                 </div>
               </div>
@@ -215,7 +219,7 @@ export default function KanbanColumn({
                   {items.length === 0 ? (
                     <div className={styles.zoneEmpty} />
                   ) : (
-                    renderItems(items, draggingId, onPointerDown, onIssueClick, canDrag, onBan)
+                    renderItems(items, draggingId, onPointerDown, onIssueClick, canDrag, onBan, onParentClick)
                   )}
                 </div>
               </div>
@@ -260,7 +264,7 @@ export default function KanbanColumn({
         {isEmpty ? (
           <div className={styles.empty}>no issues</div>
         ) : (
-          renderItems(items, draggingId, onPointerDown, onIssueClick, canDrag, onBan)
+          renderItems(items, draggingId, onPointerDown, onIssueClick, canDrag, onBan, onParentClick)
         )}
       </div>
     </div>

@@ -21,6 +21,7 @@ import { AssigneeEditor } from './AssigneeEditor';
 import { StateSelector } from './StateSelector';
 import { PrioritySelector } from './PrioritySelector';
 import { MilestonePicker } from '../milestones/MilestonePicker';
+import pickerStyles from './StateSelector.module.css';
 import { Badge, Button } from '../../ui';
 import { GitBranchPicker } from '../worktrees/GitBranchPicker';
 import { useRepo } from '../../contexts/RepoContext';
@@ -51,6 +52,104 @@ function mapRawComment(raw: RawCommentData): IssueComment {
 }
 
 
+type LabelOverrides = {
+  milestones?: string[];
+  isEpic?: boolean;
+  parentRaw?: string | null;
+};
+
+function reconstructLabels(
+  issue: IssueDetail,
+  milestonePrefix: string,
+  overrides: LabelOverrides,
+): string[] {
+  const result = issue.labels.map((l) => l.text);
+  if (issue.priority) result.push(`priority:${issue.priority}`);
+  const milestones = overrides.milestones ?? issue.milestones ?? [];
+  for (const ms of milestones) result.push(`${milestonePrefix}${ms}`);
+  if (issue.blockedBy) {
+    for (const b of issue.blockedBy) result.push(`blocked:${b.raw}`);
+  }
+  const isEpic = overrides.isEpic !== undefined ? overrides.isEpic : issue.isEpic;
+  if (isEpic) result.push('epic');
+  const parentRaw =
+    overrides.parentRaw === null ? undefined
+    : overrides.parentRaw !== undefined ? overrides.parentRaw
+    : issue.parentRaw;
+  if (parentRaw) result.push(`parent:${parentRaw}`);
+  return result;
+}
+
+interface LinkChildPickerOption {
+  id: string;
+  short: string;
+  title: string;
+  status: string;
+}
+
+function LinkChildPicker({ options, onPick }: { options: LinkChildPickerOption[]; onPick: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  function close() { setOpen(false); setFilter(''); }
+  const filtered = options.filter((o) =>
+    filter === '' ||
+    o.title.toLowerCase().includes(filter.toLowerCase()) ||
+    o.short.toLowerCase().includes(filter.toLowerCase()),
+  );
+  return (
+    <div className={styles.linkChildPicker}>
+      <button
+        type="button"
+        className={styles.linkChildTrigger}
+        onClick={() => {
+          setOpen(true);
+          setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+      >
+        + link existing
+        <span className={pickerStyles.stateCaret}>▾</span>
+      </button>
+      {open && (
+        <>
+          <div className={pickerStyles.pickerBackdrop} onClick={close} />
+          <div className={`${pickerStyles.statePicker} ${styles.linkChildPanel}`}>
+            <input
+              ref={inputRef}
+              className={pickerStyles.statePickerInput}
+              value={filter}
+              placeholder="filter issues…"
+              onChange={(e) => setFilter(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') close();
+                if (e.key === 'Enter' && filtered.length > 0) {
+                  onPick(filtered[0].id);
+                  close();
+                }
+              }}
+            />
+            <div className={pickerStyles.stateOptions}>
+              {filtered.length === 0 ? (
+                <div className={pickerStyles.stateOption} style={{ cursor: 'default', opacity: 0.6 }}>no matches</div>
+              ) : filtered.map((o) => (
+                <button
+                  key={o.id}
+                  className={`${pickerStyles.stateOption} ${styles.linkChildOption}`}
+                  onClick={() => { onPick(o.id); close(); }}
+                >
+                  <span className={styles.linkChildId}>#{o.short}</span>
+                  <span className={styles.linkChildTitle}>{o.title}</span>
+                  <span className={`${styles.linkChildStatus} ${styles[`linkChildStatus_${o.status}`] ?? ''}`}>{o.status}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function IssueDetail({ issue, currentColumnId, onClose, embedded = false, sidebarWidth: sidebarWidthProp, onSidebarWidthChange, allIssues, onNavigateIssue }: Props) {
   const { myDid, delegateDids, bannedUsers, explorerUrl, seedNode, localRepoPath, preferredEditor, milestoneSuggestions, milestonePrefix } = useRepo();
   const { onRefresh: actionsOnRefresh, onBanUser, onStateChange, onPriorityChange, onOpenPatch, onCommentsLoaded } = useActions();
@@ -78,6 +177,9 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
   }
 
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [newChildTitle, setNewChildTitle] = useState('');
+  const [newChildLabels, setNewChildLabels] = useState<string[]>([]);
+  const [creatingChild, setCreatingChild] = useState(false);
   const [commentBody, setCommentBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [descPickerOpen, setDescPickerOpen] = useState(false);
@@ -390,6 +492,167 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                 )}
               </section>
 
+              {issue.parentRaw && (
+                <section className={styles.section}>
+                  <div className={styles.sectionLabel}>Parent epic</div>
+                  <div className={styles.childrenList}>
+                    {(() => {
+                      const target = issue.parentId ? allIssues?.get(issue.parentId) : undefined;
+                      const title = target?.title ?? '(not loaded)';
+                      const short = issue.parentRaw;
+                      return (
+                        <button
+                          className={`${styles.childRow} ${!issue.parentId ? styles.childRowOrphan : ''}`}
+                          onClick={() => issue.parentId && onNavigateIssue?.(issue.parentId)}
+                          disabled={!issue.parentId || !onNavigateIssue}
+                        >
+                          <span className={styles.childId}>↑ #{short}</span>
+                          <span className={styles.childTitle}>{title}</span>
+                          {target?.status && (
+                            <span className={styles.childStatus}>{target.status}</span>
+                          )}
+                        </button>
+                      );
+                    })()}
+                  </div>
+                </section>
+              )}
+
+              {(issue.isEpic || (issue.epicChildIds?.length ?? 0) > 0 || (isDelegate || isAuthor)) && (
+                <section className={styles.section}>
+                  <div className={styles.sectionLabel}>
+                    Children
+                    {(issue.epicChildIds?.length ?? 0) > 0 && (
+                      <span className={styles.commentCount}>{issue.epicChildIds!.length}</span>
+                    )}
+                  </div>
+                  {(issue.epicChildIds?.length ?? 0) > 0 && (
+                    <div className={styles.childrenList}>
+                      {issue.epicChildIds!.map((id) => {
+                        const target = allIssues?.get(id);
+                        const title = target?.title ?? '(not loaded)';
+                        const short = id.slice(0, 7);
+                        const solved = target?.status === 'solved' || target?.status === 'closed';
+                        const canRemove = (isDelegate || isAuthor) && !!target;
+                        return (
+                          <div key={id} className={`${styles.childRow} ${solved ? styles.childRowSolved : ''}`}>
+                            <button
+                              type="button"
+                              className={styles.childRowBody}
+                              onClick={() => onNavigateIssue?.(id)}
+                              disabled={!onNavigateIssue}
+                            >
+                              <span className={styles.childId}>#{short}</span>
+                              <span className={styles.childTitle}>{title}</span>
+                              {target?.status && (
+                                <span className={styles.childStatus}>{target.status}</span>
+                              )}
+                            </button>
+                            {canRemove && (
+                              <button
+                                type="button"
+                                className={styles.childRemoveBtn}
+                                title="Unlink child"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    const newLabels = reconstructLabels(target!, milestonePrefix, { parentRaw: null });
+                                    await invoke('label_issue', { rid: target!.rid, issueId: target!.id, labels: newLabels });
+                                    actionsOnRefresh();
+                                  } catch (err) {
+                                    console.error('unlink child failed:', err);
+                                  }
+                                }}
+                              >×</button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {(isDelegate || isAuthor) && (
+                    <>
+                      <div className={styles.parentEditRow}>
+                        <LinkChildPicker
+                          options={
+                            allIssues
+                              ? [...allIssues.values()]
+                                  .filter((i) =>
+                                    i.id !== issue.id &&
+                                    i.parentRaw !== issue.id.slice(0, 7) &&
+                                    i.id !== issue.parentId &&
+                                    !i.isEpic,
+                                  )
+                                  .map((cand) => ({ id: cand.id, short: cand.id.slice(0, 7), title: cand.title, status: cand.status }))
+                              : []
+                          }
+                          onPick={async (childId) => {
+                            const child = allIssues?.get(childId);
+                            if (!child) return;
+                            try {
+                              if (!issue.isEpic) {
+                                const epicLabels = reconstructLabels(issue, milestonePrefix, { isEpic: true });
+                                await invoke('label_issue', { rid: issue.rid, issueId: issue.id, labels: epicLabels });
+                              }
+                              const childLabels = reconstructLabels(child, milestonePrefix, {
+                                parentRaw: issue.id.slice(0, 7),
+                              });
+                              await invoke('label_issue', { rid: child.rid, issueId: child.id, labels: childLabels });
+                              await actionsOnRefresh();
+                            } catch (err) {
+                              console.error('link child failed:', err);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className={styles.childCreateRow}>
+                        <input
+                          className={styles.childCreateInput}
+                          placeholder="new child title…"
+                          value={newChildTitle}
+                          onChange={(e) => setNewChildTitle(e.target.value)}
+                          disabled={creatingChild}
+                        />
+                        <div className={styles.childCreateLabelsInline}>
+                          <LabelEditor labels={newChildLabels} onChange={setNewChildLabels} />
+                        </div>
+                        <button
+                          className={styles.childCreateBtn}
+                          disabled={!newChildTitle.trim() || creatingChild}
+                          onClick={async () => {
+                            const title = newChildTitle.trim();
+                            if (!title) return;
+                            setCreatingChild(true);
+                            try {
+                              const childLabels = [`parent:${issue.id.slice(0, 7)}`, ...newChildLabels];
+                              await invoke('create_issue', {
+                                rid: issue.rid,
+                                title,
+                                description: '',
+                                labels: childLabels,
+                              });
+                              if (!issue.isEpic) {
+                                const epicLabels = reconstructLabels(issue, milestonePrefix, { isEpic: true });
+                                await invoke('label_issue', { rid: issue.rid, issueId: issue.id, labels: epicLabels });
+                              }
+                              setNewChildTitle('');
+                              setNewChildLabels([]);
+                              await actionsOnRefresh();
+                            } catch (err) {
+                              console.error(err);
+                            } finally {
+                              setCreatingChild(false);
+                            }
+                          }}
+                        >
+                          {creatingChild ? 'creating…' : 'create'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </section>
+              )}
+
               <section className={styles.section}>
                 <div className={styles.sectionLabel}>
                   Comments
@@ -609,9 +872,8 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                       readOnly={!isDelegate && !isAuthor}
                       onChange={async (newMilestones) => {
                         try {
-                          const otherLabels = issue.labels.map((l) => l.text);
-                          const msLabels = newMilestones.map((ms) => `${milestonePrefix}${ms}`);
-                          await invoke('label_issue', { rid: issue.rid, issueId: issue.id, labels: [...otherLabels, ...msLabels] });
+                          const labels = reconstructLabels(issue, milestonePrefix, { milestones: newMilestones });
+                          await invoke('label_issue', { rid: issue.rid, issueId: issue.id, labels });
                           actionsOnRefresh();
                         } catch (e) {
                           console.error(e);
@@ -619,6 +881,7 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                       }}
                     />
                   </div>
+
                 </div>
 
                 {issue.patches && issue.patches.length > 0 && (

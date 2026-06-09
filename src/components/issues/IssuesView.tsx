@@ -372,6 +372,24 @@ export default function IssuesView({
                 {issue.blockedIssueIds && issue.blockedIssueIds.length > 0 && (
                   <span className={styles.rowBlocksPill}>blocks {issue.blockedIssueIds.length}</span>
                 )}
+                {issue.isEpic && (
+                  <span className={styles.rowEpicPill} title={issue.epicChildIds ? `epic with ${issue.epicChildIds.length} child${issue.epicChildIds.length === 1 ? '' : 'ren'}` : 'epic (no children yet)'}>
+                    epic{issue.epicChildIds ? ` ${issue.epicChildIds.length}` : ''}
+                  </span>
+                )}
+                {issue.parentRaw && (
+                  <span
+                    className={`${styles.rowParentPill} ${!issue.parentId ? styles.rowParentPillOrphan : ''}`}
+                    title={issue.parentId ? 'open parent epic' : `parent ${issue.parentRaw} not loaded`}
+                    onClick={(e) => {
+                      if (!issue.parentId) return;
+                      e.stopPropagation();
+                      onSelectIssue(issue.parentId);
+                    }}
+                  >
+                    ↑ #{issue.parentRaw}
+                  </span>
+                )}
                 {issue.milestones && issue.milestones.length > 0 && (
                   <span className={styles.rowLabels}>
                     {issue.milestones.map((ms) => (

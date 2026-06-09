@@ -61,9 +61,15 @@ function titleFromId(id: string): string {
 /** Reconstruct full label list from an IssueDetail, re-adding milestone labels that were stripped for display. */
 function allLabels(issue: IssueDetailType, milestonePrefix: string): string[] {
   const labels = issue.labels.map((l) => l.text);
+  if (issue.priority) labels.push(`priority:${issue.priority}`);
   if (issue.milestones) {
     for (const ms of issue.milestones) labels.push(`${milestonePrefix}${ms}`);
   }
+  if (issue.blockedBy) {
+    for (const b of issue.blockedBy) labels.push(`blocked:${b.raw}`);
+  }
+  if (issue.isEpic) labels.push('epic');
+  if (issue.parentRaw) labels.push(`parent:${issue.parentRaw}`);
   return labels;
 }
 
@@ -131,6 +137,23 @@ function issuesToColumns(
     }
   }
 
+  // Epic→children index: for every `parent:<hex7>` label, record the child
+  // against the parent. Parent may not be loaded — chip still renders, no
+  // entry in this index.
+  const childrenByParent = new Map<string, string[]>();
+  for (const raw of issues) {
+    for (const l of raw.labels) {
+      if (!l.startsWith('parent:')) continue;
+      const val = l.slice('parent:'.length);
+      if (!HEX7_LABEL.test(val)) continue;
+      const parentId = issueByPrefix.get(val.toLowerCase());
+      if (!parentId) continue;
+      const list = childrenByParent.get(parentId) ?? [];
+      list.push(raw.id);
+      childrenByParent.set(parentId, list);
+    }
+  }
+
   // Build inverted index: 7-char hex prefix → patches that mention it
   // This turns O(N*M) string scans into O(M) build + O(1) lookup
   const patchesByPrefix = new Map<string, RawPatchData[]>();
@@ -183,13 +206,29 @@ function issuesToColumns(
 
     const blockedIssueIds = blockedByBlocker.get(raw.id);
 
+    // Implicit epic: any issue that has at least one child pointing at it
+    // is treated as an epic even without the explicit `epic` label.
+    const isEpic = raw.labels.includes('epic') || (childrenByParent.get(raw.id)?.length ?? 0) > 0;
+    const parentLabel = raw.labels.find((l) => l.startsWith('parent:'));
+    const parentRaw = parentLabel ? parentLabel.slice('parent:'.length) : undefined;
+    const parentId = parentRaw && HEX7_LABEL.test(parentRaw)
+      ? issueByPrefix.get(parentRaw.toLowerCase())
+      : undefined;
+    const epicChildIds = childrenByParent.get(raw.id);
+
     const card = {
       id: raw.id,
       author: raw.author,
       authorDid: raw.authorDid,
       title: raw.title,
       labels: raw.labels
-        .filter((l) => !l.startsWith('priority:') && !l.startsWith(milestonePrefix) && !l.startsWith('blocked:'))
+        .filter((l) =>
+          !l.startsWith('priority:') &&
+          !l.startsWith(milestonePrefix) &&
+          !l.startsWith('blocked:') &&
+          !l.startsWith('parent:') &&
+          l !== 'epic',
+        )
         .map((l) => ({ text: l, variant: l })),
       milestones: milestones.length > 0 ? milestones : undefined,
       assignees: raw.assignees.length > 0 ? raw.assignees : undefined,
@@ -198,6 +237,10 @@ function issuesToColumns(
       indicator: Object.keys(indicator).length > 0 ? indicator : undefined,
       ...(raw.state === 'solved' && { solved: true }),
       priority,
+      ...(isEpic && { isEpic: true }),
+      ...(parentRaw && { parentRaw }),
+      ...(parentId && { parentId }),
+      ...(epicChildIds && epicChildIds.length > 0 && { epicChildIds }),
     };
 
     detailMap.set(raw.id, {
@@ -723,18 +766,21 @@ export default function App() {
     invoke('save_config', { config: updated }).catch(console.error);
   }
 
-  function handleRefresh() {
+  async function handleRefresh() {
     if (!activeRid || !setup) return;
-    Promise.all([
-      invoke<RawIssueData[]>('list_issues', { rid: activeRid }),
-      invoke<RawPatchData[]>('list_patches', { rid: activeRid }),
-    ]).then(([issues, patches]) => {
+    try {
+      const [issues, patches] = await Promise.all([
+        invoke<RawIssueData[]>('list_issues', { rid: activeRid }),
+        invoke<RawPatchData[]>('list_patches', { rid: activeRid }),
+      ]);
       setRawPatches(patches);
       const columnOrder = setup.columnOrder?.[activeRid] ?? [];
       const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
       setColumns(cols);
       setIssueDetails(details);
-    }).catch(console.error);
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   function handleCommentsLoaded(issueId: string, comments: IssueComment[]) {
@@ -1125,7 +1171,7 @@ function handleGlobalInboxOpen() {
           <main className={styles.main}>
             {isRepoLoading && <div className={styles.loadingBar}><div className={styles.loadingBarInner} /></div>}
             {activeView === 'kanban' && (
-              <KanbanBoard columns={columns} onChange={handleColumnsChange} onIssueMoved={handleIssueMoved} onPriorityChange={handlePriorityChange} onColumnsReorder={handleColumnsReorder} onIssueClick={handleIssueClick} onNewIssue={() => { setIssueCreating(true); setIssueReturnView(activeView); setActiveView('issues'); setSelectedIssueInView(null); }} canDrag={(issue) => canModify(issue.id)} columnColors={setup.columnColors?.[activeRid!] ?? {}} onColumnColorChange={handleColumnColorChange} onColumnRemove={handleColumnRemove} visibleColumns={setup.visibleColumns ?? columns.length} bannedDids={new Set((setup.bannedUsers ?? []).filter((b) => b.scope !== 'comments').map((b) => b.did))} onBanUser={handleBanUser} delegateDids={activeDelegateDids} myDid={myDid} />
+              <KanbanBoard columns={columns} onChange={handleColumnsChange} onIssueMoved={handleIssueMoved} onPriorityChange={handlePriorityChange} onColumnsReorder={handleColumnsReorder} onIssueClick={handleIssueClick} onNewIssue={() => { setIssueCreating(true); setIssueReturnView(activeView); setActiveView('issues'); setSelectedIssueInView(null); }} canDrag={(issue) => canModify(issue.id)} columnColors={setup.columnColors?.[activeRid!] ?? {}} onColumnColorChange={handleColumnColorChange} onColumnRemove={handleColumnRemove} visibleColumns={setup.visibleColumns ?? columns.length} bannedDids={new Set((setup.bannedUsers ?? []).filter((b) => b.scope !== 'comments').map((b) => b.did))} onBanUser={handleBanUser} delegateDids={activeDelegateDids} myDid={myDid} onParentClick={handleIssueClick} />
             )}
             {activeView === 'issues' && (
               <IssuesView
