@@ -1,5 +1,6 @@
 use radicle::cob::issue::Issues;
 use radicle::cob::patch::Patches;
+use radicle::cob::store::access::ReadOnly;
 use radicle::node::notifications::{NotificationKind, NotificationStatus};
 use radicle::node::AliasStore as _;
 use radicle::profile::Profile;
@@ -30,7 +31,7 @@ fn enrich_cob_notification(
     };
 
     if is_issue {
-        let issues = match Issues::open(&repo) {
+        let issues = match Issues::open(&repo, ReadOnly) {
             Ok(i) => i,
             Err(_) => return (None, None, None),
         };
@@ -54,7 +55,7 @@ fn enrich_cob_notification(
     }
 
     if is_patch {
-        let patches = match Patches::open(&repo) {
+        let patches = match Patches::open(&repo, ReadOnly) {
             Ok(p) => p,
             Err(_) => return (None, None, None),
         };

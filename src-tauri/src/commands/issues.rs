@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use radicle::cob::common::Reaction;
 use radicle::cob::issue::{CloseReason, Issues, State};
+use radicle::cob::store::access::ReadOnly;
 use radicle::cob::thread::CommentId;
 use radicle::identity::IdError;
 use radicle::node::{Alias, AliasStore as _};
@@ -30,7 +31,7 @@ pub async fn list_issues(rid: String) -> Result<Vec<IssueData>, String> {
         let profile = Profile::load().map_err(|e| e.to_string())?;
         let rid: radicle::prelude::RepoId = rid.parse().map_err(|e: IdError| e.to_string())?;
         let repo = profile.storage.repository(rid).map_err(|e| e.to_string())?;
-        let issues = Issues::open(&repo).map_err(|e| e.to_string())?;
+        let issues = Issues::open(&repo, ReadOnly).map_err(|e| e.to_string())?;
 
         let mut all: Vec<_> = issues
             .all()
@@ -73,7 +74,7 @@ pub fn get_issue(rid: String, issue_id: String) -> Result<Option<IssueData>, Str
     let profile = Profile::load().map_err(|e| e.to_string())?;
     let rid: radicle::prelude::RepoId = rid.parse().map_err(|e: IdError| e.to_string())?;
     let repo = profile.storage.repository(rid).map_err(|e| e.to_string())?;
-    let issues = Issues::open(&repo).map_err(|e| e.to_string())?;
+    let issues = Issues::open(&repo, ReadOnly).map_err(|e| e.to_string())?;
     let oid = issue_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
     let issue = match issues.get(&oid).map_err(|e| e.to_string())? {
         Some(i) => i,
@@ -113,14 +114,14 @@ pub fn create_issue(
     let rid: radicle::prelude::RepoId = rid.parse().map_err(|e: IdError| e.to_string())?;
     let repo = profile.storage.repository_mut(rid).map_err(|e| e.to_string())?;
     let signer = profile.signer().map_err(|e| e.to_string())?;
-    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issues = profile.issues_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let title = radicle::cob::Title::new(&title).map_err(|e| e.to_string())?;
     let parsed_labels: Vec<radicle::cob::Label> = labels
         .iter()
         .map(|l| l.parse::<radicle::cob::Label>().map_err(|e| e.to_string()))
         .collect::<Result<_, _>>()?;
     let issue = issues
-        .create(title, description, &parsed_labels, &[], [], &signer)
+        .create(title, description, &parsed_labels, &[], [])
         .map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(issue.id().to_string())
@@ -136,10 +137,10 @@ pub fn edit_issue(rid: String, issue_id: String, title: String, description: Str
         .parse::<radicle::cob::ObjectId>()
         .map_err(|e| e.to_string())?;
     let title = radicle::cob::Title::new(&title).map_err(|e| e.to_string())?;
-    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issues = profile.issues_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
-    issue.edit(title, &signer).map_err(|e| e.to_string())?;
-    issue.edit_description(description, [], &signer).map_err(|e| e.to_string())?;
+    issue.edit(title).map_err(|e| e.to_string())?;
+    issue.edit_description(description, []).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -220,9 +221,9 @@ pub fn assign_issue(rid: String, issue_id: String, assignees: Vec<String>) -> Re
         .iter()
         .map(|s| s.parse::<Did>().map_err(|e| e.to_string()))
         .collect::<Result<_, _>>()?;
-    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issues = profile.issues_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
-    issue.assign(parsed, &signer).map_err(|e| e.to_string())?;
+    issue.assign(parsed).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -240,9 +241,9 @@ pub fn label_issue(rid: String, issue_id: String, labels: Vec<String>) -> Result
         .iter()
         .map(|l| l.parse::<radicle::cob::Label>().map_err(|e| e.to_string()))
         .collect::<Result<_, _>>()?;
-    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issues = profile.issues_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
-    issue.label(parsed_labels, &signer).map_err(|e| e.to_string())?;
+    issue.label(parsed_labels).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -259,9 +260,9 @@ pub fn set_issue_state(rid: String, issue_id: String, state: String) -> Result<(
         "solved" => State::Closed { reason: CloseReason::Solved },
         _ => State::Open,
     };
-    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issues = profile.issues_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
-    issue.lifecycle(new_state, &signer).map_err(|e| e.to_string())?;
+    issue.lifecycle(new_state).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -275,11 +276,11 @@ pub fn add_comment(rid: String, issue_id: String, body: String) -> Result<(), St
     let issue_id = issue_id
         .parse::<radicle::cob::ObjectId>()
         .map_err(|e| e.to_string())?;
-    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issues = profile.issues_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
     let (root_id, _) = issue.root();
     let root_id = *root_id;
-    issue.comment(body, root_id, vec![], &signer).map_err(|e| e.to_string())?;
+    issue.comment(body, root_id, vec![]).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -301,10 +302,10 @@ pub fn reply_comment(
     let comment_id = comment_id
         .parse::<CommentId>()
         .map_err(|e| e.to_string())?;
-    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issues = profile.issues_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
     issue
-        .comment(body, comment_id, vec![], &signer)
+        .comment(body, comment_id, vec![])
         .map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
@@ -330,10 +331,10 @@ pub fn react_comment(
         .map_err(|e| e.to_string())?;
     let first_char = emoji.chars().next().ok_or("empty emoji")?;
     let reaction = Reaction::new(first_char).map_err(|e| e.to_string())?;
-    let mut issues = profile.issues_mut(&repo).map_err(|e| e.to_string())?;
+    let mut issues = profile.issues_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut issue = issues.get_mut(&issue_id).map_err(|e| e.to_string())?;
     issue
-        .react(comment_id, reaction, active, &signer)
+        .react(comment_id, reaction, active)
         .map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())

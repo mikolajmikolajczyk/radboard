@@ -1,5 +1,6 @@
 use radicle::cob::common::Reaction;
 use radicle::cob::patch::Patches;
+use radicle::cob::store::access::ReadOnly;
 use radicle::cob::thread::CommentId;
 use radicle::identity::IdError;
 use radicle::prelude::Did;
@@ -15,7 +16,7 @@ pub async fn list_patches(rid: String) -> Result<Vec<PatchData>, String> {
         let profile = Profile::load().map_err(|e| e.to_string())?;
         let rid: radicle::prelude::RepoId = rid.parse().map_err(|e: IdError| e.to_string())?;
         let repo = profile.storage.repository(rid).map_err(|e| e.to_string())?;
-        let patches = Patches::open(&repo).map_err(|e| e.to_string())?;
+        let patches = Patches::open(&repo, ReadOnly).map_err(|e| e.to_string())?;
 
         let mut all: Vec<_> = patches
             .all()
@@ -62,7 +63,7 @@ pub fn get_patch_detail(rid: String, patch_id: String, revision_id: String) -> R
     let profile = Profile::load().map_err(|e| e.to_string())?;
     let rid: radicle::prelude::RepoId = rid.parse().map_err(|e: IdError| e.to_string())?;
     let repo = profile.storage.repository(rid).map_err(|e| e.to_string())?;
-    let patches = Patches::open(&repo).map_err(|e| e.to_string())?;
+    let patches = Patches::open(&repo, ReadOnly).map_err(|e| e.to_string())?;
 
     let oid = patch_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
     let patch = patches.get(&oid).map_err(|e| e.to_string())?
@@ -126,7 +127,7 @@ pub fn get_patch_diff(rid: String, patch_id: String, revision_id: String) -> Res
     let profile = Profile::load().map_err(|e| e.to_string())?;
     let rid_parsed: radicle::prelude::RepoId = rid.parse().map_err(|e: IdError| e.to_string())?;
     let repo = profile.storage.repository(rid_parsed).map_err(|e| e.to_string())?;
-    let patches = Patches::open(&repo).map_err(|e| e.to_string())?;
+    let patches = Patches::open(&repo, ReadOnly).map_err(|e| e.to_string())?;
 
     let patch_oid: radicle::cob::ObjectId = patch_id
         .parse::<radicle::cob::ObjectId>()
@@ -161,10 +162,10 @@ pub fn add_patch_comment(rid: String, patch_id: String, revision_id: String, bod
     let repo = profile.storage.repository_mut(rid).map_err(|e| e.to_string())?;
     let signer = profile.signer().map_err(|e| e.to_string())?;
     let oid = patch_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
-    let mut patches = profile.patches_mut(&repo).map_err(|e| e.to_string())?;
+    let mut patches = profile.patches_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut patch = patches.get_mut(&oid).map_err(|e| e.to_string())?;
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
-    patch.comment(rev_id, body, None, None, vec![], &signer).map_err(|e| e.to_string())?;
+    patch.comment(rev_id, body, None, None, vec![]).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -177,10 +178,10 @@ pub fn reply_patch_comment(rid: String, patch_id: String, revision_id: String, c
     let signer = profile.signer().map_err(|e| e.to_string())?;
     let oid = patch_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
     let comment_id = comment_id.parse::<CommentId>().map_err(|e| e.to_string())?;
-    let mut patches = profile.patches_mut(&repo).map_err(|e| e.to_string())?;
+    let mut patches = profile.patches_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut patch = patches.get_mut(&oid).map_err(|e| e.to_string())?;
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
-    patch.comment(rev_id, body, Some(comment_id), None, vec![], &signer).map_err(|e| e.to_string())?;
+    patch.comment(rev_id, body, Some(comment_id), None, vec![]).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -194,10 +195,10 @@ pub fn react_patch_comment(rid: String, patch_id: String, revision_id: String, e
     let oid = patch_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
     let first_char = emoji.chars().next().ok_or("empty emoji")?;
     let reaction = Reaction::new(first_char).map_err(|e| e.to_string())?;
-    let mut patches = profile.patches_mut(&repo).map_err(|e| e.to_string())?;
+    let mut patches = profile.patches_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut patch = patches.get_mut(&oid).map_err(|e| e.to_string())?;
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
-    patch.react(rev_id, reaction, None, active, &signer).map_err(|e| e.to_string())?;
+    patch.react(rev_id, reaction, None, active).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -210,7 +211,7 @@ pub fn review_patch(rid: String, patch_id: String, revision_id: String, verdict:
     let repo = profile.storage.repository_mut(rid).map_err(|e| e.to_string())?;
     let signer = profile.signer().map_err(|e| e.to_string())?;
     let oid = patch_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
-    let mut patches = profile.patches_mut(&repo).map_err(|e| e.to_string())?;
+    let mut patches = profile.patches_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut patch = patches.get_mut(&oid).map_err(|e| e.to_string())?;
 
     let v = match verdict.as_str() {
@@ -221,7 +222,7 @@ pub fn review_patch(rid: String, patch_id: String, revision_id: String, verdict:
     let msg = if message.trim().is_empty() { None } else { Some(message) };
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
 
-    patch.review(rev_id, v, msg, vec![], &signer).map_err(|e| e.to_string())?;
+    patch.review(rev_id, v, msg, vec![]).map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }
@@ -245,7 +246,7 @@ pub fn add_patch_line_comment(
     let repo = profile.storage.repository_mut(rid).map_err(|e| e.to_string())?;
     let signer = profile.signer().map_err(|e| e.to_string())?;
     let oid = patch_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
-    let mut patches = profile.patches_mut(&repo).map_err(|e| e.to_string())?;
+    let mut patches = profile.patches_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut patch = patches.get_mut(&oid).map_err(|e| e.to_string())?;
     let (rev_id, _) = pick_revision(&patch, &revision_id)?;
     let commit: radicle::git::Oid = commit_oid.parse().map_err(|e: radicle::git::ParseOidError| e.to_string())?;
@@ -258,7 +259,7 @@ pub fn add_patch_line_comment(
         old: old_range,
     };
     let reply_oid = reply_to.map(|r| r.parse::<CommentId>().map_err(|e| e.to_string())).transpose()?;
-    patch.comment(rev_id, body, reply_oid, Some(location), vec![] as Vec<radicle::cob::Embed<radicle::cob::Uri>>, &signer)
+    patch.comment(rev_id, body, reply_oid, Some(location), vec![] as Vec<radicle::cob::Embed<radicle::cob::Uri>>)
         .map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
@@ -271,9 +272,9 @@ pub fn archive_patch(rid: String, patch_id: String) -> Result<(), String> {
     let repo = profile.storage.repository_mut(rid).map_err(|e| e.to_string())?;
     let signer = profile.signer().map_err(|e| e.to_string())?;
     let oid = patch_id.parse::<radicle::cob::ObjectId>().map_err(|e| e.to_string())?;
-    let mut patches = profile.patches_mut(&repo).map_err(|e| e.to_string())?;
+    let mut patches = profile.patches_mut(&repo, &signer).map_err(|e| e.to_string())?;
     let mut patch = patches.get_mut(&oid).map_err(|e| e.to_string())?;
-    patch.archive(&signer).map_err(|e| e.to_string())?;
+    patch.archive().map_err(|e| e.to_string())?;
     announce_refs(&profile, rid);
     Ok(())
 }

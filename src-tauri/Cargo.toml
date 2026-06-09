@@ -1,6 +1,6 @@
 [package]
 name = "radboard"
-version = "0.7.4"
+version = "0.8.0"
 description = "Desktop Kanban board for Radicle repositories"
 authors = ["Mikołaj Mikołajczyk <mikolajczyk.mikolajm@gmail.com>"]
 homepage = "https://radboard.mikolajczyk.org"
@@ -30,7 +30,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-radicle = "0.21"
+radicle = "0.24"
 radicle-localtime = "0.1"
 portable-pty = "0.8"
 uuid = { version = "1", features = ["v4"] }
