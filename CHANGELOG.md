@@ -1,4 +1,22 @@
 # Changelog
+## v0.8.0 — 2026-06-09
+
+### Bug Fixes
+
+- add resize handles with proper cursors on frameless window (7689e4d)
+- rows are divs with role=button to avoid nested <button>
+
+### Features
+
+- ctrl-k repo switcher with fuzzy search (6c0ccfb)
+- fuzzy search, fixed-height scroll, and alphabetical sort for repo pickers
+- 🌱 badge for good-first-issue labeled issues (e58cc48)
+- most-wanted toggle in open column (295533b)
+
+### Refactor
+
+- right-align good-first-issue leaf next to epic pill
+
 ## v0.7.4 — 2026-06-09
 
 ### Bug Fixes
