@@ -53,6 +53,7 @@ function mapRawComment(raw: RawCommentData): IssueComment {
 
 
 type LabelOverrides = {
+  labels?: string[];
   milestones?: string[];
   isEpic?: boolean;
   parentRaw?: string | null;
@@ -63,7 +64,8 @@ function reconstructLabels(
   milestonePrefix: string,
   overrides: LabelOverrides,
 ): string[] {
-  const result = issue.labels.map((l) => l.text);
+  const baseLabels = overrides.labels ?? issue.labels.map((l) => l.text);
+  const result = [...baseLabels];
   if (issue.priority) result.push(`priority:${issue.priority}`);
   const milestones = overrides.milestones ?? issue.milestones ?? [];
   for (const ms of milestones) result.push(`${milestonePrefix}${ms}`);
@@ -768,7 +770,8 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
                         labels={issue.labels.map((l) => l.text)}
                         onChange={async (newLabels) => {
                           try {
-                            await invoke('label_issue', { rid: issue.rid, issueId: issue.id, labels: newLabels });
+                            const labels = reconstructLabels(issue, milestonePrefix, { labels: newLabels });
+                            await invoke('label_issue', { rid: issue.rid, issueId: issue.id, labels });
                             actionsOnRefresh();
                           } catch (e) {
                             console.error(e);
