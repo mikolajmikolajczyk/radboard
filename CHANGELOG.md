@@ -1,4 +1,14 @@
 # Changelog
+## v0.7.4 — 2026-06-09
+
+### Bug Fixes
+
+- single id badge + greener edit button in detail header
+
+### Features
+
+- persist list pane width and tweak list visuals
+
 ## v0.7.3 — 2026-06-09
 
 ### Bug Fixes
