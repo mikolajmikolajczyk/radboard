@@ -7,8 +7,8 @@
 /* ── Left panel: issue list ─────────────────────────────────────────────────── */
 
 .listPanel {
-  min-width: 200px;
-  max-width: 600px;
+  min-width: 360px;
+  max-width: 1000px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -262,10 +262,11 @@
 }
 
 .row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 60px 50px 16px 1fr 54px 50px;
   align-items: center;
   gap: 8px;
-  padding: 7px 12px;
+  padding: 3px 12px;
   border: none;
   background: transparent;
   color: var(--text-2);
@@ -274,6 +275,32 @@
   transition: background 0.12s;
   width: 100%;
   flex-shrink: 0;
+}
+
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.rowTitleLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rowPillsLine {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.rowPillsLine:empty {
+  display: none;
 }
 
 .row:hover { background: var(--hover-3); }
@@ -288,15 +315,16 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
   text-transform: uppercase;
-  padding: 1px 5px;
+  padding: 1px 4px;
   border: 1px solid;
   border-radius: 3px;
   flex-shrink: 0;
-  min-width: 44px;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.prioSpacer { width: 18px; flex-shrink: 0; }
+.prioSpacer { width: 12px; flex-shrink: 0; }
 
 .rowTitle {
   flex: 1;
@@ -307,10 +335,18 @@
   min-width: 0;
 }
 
+.rowChildArrow {
+  color: #a78bfa;
+  font-size: 12px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
 .rowLabels {
   display: flex;
   gap: 3px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .rowLabel {
@@ -320,6 +356,26 @@
   border-radius: 3px;
   background: rgba(99, 115, 210, 0.10);
   color: #818cf8;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowMoreBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--hover-2);
+  color: var(--text-5);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.rowMoreBadge:hover {
+  background: var(--hover-3);
+  color: var(--text-2);
 }
 
 .rowMilestone {
@@ -403,14 +459,16 @@
 .author {
   font-size: 10px;
   color: var(--text-6);
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .date {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
   color: var(--text-7);
-  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .empty {

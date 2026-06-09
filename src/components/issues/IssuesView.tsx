@@ -48,6 +48,7 @@ export default function IssuesView({
   const [assigneeFilters, setAssigneeFilters] = useState<Set<string>>(new Set());
   const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
   const [issueSidebarWidth, setIssueSidebarWidth] = useState(210);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [creatingNew, _setCreatingNew] = useState(!!startCreating);
   function setCreatingNew(v: boolean) {
     _setCreatingNew(v);
@@ -129,7 +130,7 @@ export default function IssuesView({
   const andLabels = [...labelFilters.entries()].filter(([, m]) => m === 'and').map(([l]) => l);
 
   const searchLower = search.toLowerCase();
-  const filtered = allIssues.filter(
+  const filteredRaw = allIssues.filter(
     (i) => issueMatchesFilter(i, filter) &&
            (orLabels.length === 0 || orLabels.some((lf) => i.labels.some((l) => l.text === lf))) &&
            andLabels.every((lf) => i.labels.some((l) => l.text === lf)) &&
@@ -137,6 +138,29 @@ export default function IssuesView({
              (i.assignees?.some((a) => assigneeFilters.has(a.did)) ?? false)) &&
            (searchLower === '' || i.title.toLowerCase().includes(searchLower) || i.author.toLowerCase().includes(searchLower)),
   );
+
+  // Reorder so children appear directly under their parent epic when both
+  // pass the current filter. Children whose parent is filtered out keep
+  // their natural position with a standalone arrow indicator.
+  const filteredById = new Map(filteredRaw.map((i) => [i.id, i]));
+  const placedIds = new Set<string>();
+  const filtered: typeof filteredRaw = [];
+  for (const issue of filteredRaw) {
+    if (placedIds.has(issue.id)) continue;
+    // Skip children whose parent is also in the filtered set — they'll be
+    // pushed when we visit the parent.
+    if (issue.parentId && filteredById.has(issue.parentId)) continue;
+    filtered.push(issue);
+    placedIds.add(issue.id);
+    if (issue.epicChildIds) {
+      for (const cid of issue.epicChildIds) {
+        const child = filteredById.get(cid);
+        if (!child || placedIds.has(cid)) continue;
+        filtered.push(child);
+        placedIds.add(cid);
+      }
+    }
+  }
 
   const allFilters: Filter[] = ['all', 'open', ...dynamicStates, 'closed'];
   const counts = Object.fromEntries(allFilters.map((f) => [f, allIssues.filter((i) => issueMatchesFilter(i, f)).length]));
@@ -365,7 +389,14 @@ export default function IssuesView({
                 ) : (
                   <span className={styles.prioSpacer} />
                 )}
-                <span className={styles.rowTitle}>{issue.title}</span>
+                <div className={styles.rowMain}>
+                  <div className={styles.rowTitleLine}>
+                    {issue.parentId && filteredById.has(issue.parentId) && (
+                      <span className={styles.rowChildArrow} title="child of parent epic above">↳</span>
+                    )}
+                    <span className={styles.rowTitle}>{issue.title}</span>
+                  </div>
+                  <div className={styles.rowPillsLine}>
                 {(issue.blockedBy?.length ?? 0) > 0 && (
                   <span className={styles.rowBlockedPill} title={issue.blockedBy!.map((b) => `blocked by ${b.raw}`).join('; ')}>blocked</span>
                 )}
@@ -390,28 +421,76 @@ export default function IssuesView({
                     ↑ #{issue.parentRaw}
                   </span>
                 )}
-                {issue.milestones && issue.milestones.length > 0 && (
-                  <span className={styles.rowLabels}>
-                    {issue.milestones.map((ms) => (
-                      <span key={ms} className={styles.rowMilestone}>{formatMilestoneDisplay(ms)}</span>
-                    ))}
-                  </span>
-                )}
-                {issue.labels.filter((l) => !l.text.startsWith('state:')).length > 0 && (
-                  <span className={styles.rowLabels}>
-                    {issue.labels.filter((l) => !l.text.startsWith('state:')).map((l) => (
-                      <span key={l.text} className={styles.rowLabel}>{l.text}</span>
-                    ))}
-                  </span>
-                )}
-                {issue.assignees && issue.assignees.length > 0 && (
-                  <span className={styles.rowLabels}>
-                    {issue.assignees.map((a) => (
-                      <span key={a.did} className={styles.rowAssignee} title={a.did}>@{a.alias}</span>
-                    ))}
-                  </span>
-                )}
-                <span className={styles.author}>{issue.author}</span>
+                {(() => {
+                  const MAX_CHIPS = 2;
+                  type Chip = { key: string; node: React.ReactNode; tooltip: string };
+                  const chips: Chip[] = [];
+                  for (const ms of issue.milestones ?? []) {
+                    chips.push({
+                      key: `ms-${ms}`,
+                      node: <span key={`ms-${ms}`} className={styles.rowMilestone}>{formatMilestoneDisplay(ms)}</span>,
+                      tooltip: formatMilestoneDisplay(ms),
+                    });
+                  }
+                  for (const l of issue.labels.filter((l) => !l.text.startsWith('state:'))) {
+                    chips.push({
+                      key: `l-${l.text}`,
+                      node: <span key={`l-${l.text}`} className={styles.rowLabel}>{l.text}</span>,
+                      tooltip: l.text,
+                    });
+                  }
+                  for (const a of issue.assignees ?? []) {
+                    chips.push({
+                      key: `a-${a.did}`,
+                      node: <span key={`a-${a.did}`} className={styles.rowAssignee} title={a.did}>@{a.alias}</span>,
+                      tooltip: `@${a.alias}`,
+                    });
+                  }
+                  if (chips.length === 0) return null;
+                  const expanded = expandedRows.has(issue.id);
+                  const visible = expanded ? chips : chips.slice(0, MAX_CHIPS);
+                  const overflow = expanded ? [] : chips.slice(MAX_CHIPS);
+                  return (
+                    <span className={styles.rowLabels}>
+                      {visible.map((c) => c.node)}
+                      {overflow.length > 0 && (
+                        <span
+                          className={styles.rowMoreBadge}
+                          role="button"
+                          title={overflow.map((c) => c.tooltip).join(', ')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedRows((prev) => {
+                              const next = new Set(prev);
+                              next.add(issue.id);
+                              return next;
+                            });
+                          }}
+                        >+{overflow.length} more</span>
+                      )}
+                      {expanded && chips.length > MAX_CHIPS && (
+                        <span
+                          className={styles.rowMoreBadge}
+                          role="button"
+                          title="Collapse labels"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedRows((prev) => {
+                              const next = new Set(prev);
+                              next.delete(issue.id);
+                              return next;
+                            });
+                          }}
+                        >− less</span>
+                      )}
+                    </span>
+                  );
+                })()}
+                  </div>
+                </div>
+                <span className={styles.author} title={issue.author}>
+                  {issue.author.length > 7 ? issue.author.slice(0, 7) + '…' : issue.author}
+                </span>
                 <span className={styles.date}>{issue.createdAt.slice(0, 10)}</span>
               </button>
             ))}
