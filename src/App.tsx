@@ -15,6 +15,7 @@ import GlobalInboxPanel from './components/inbox/GlobalInboxPanel';
 import SettingsModal from './components/settings/SettingsModal';
 import WelcomeScreen from './components/welcome/WelcomeScreen';
 import AddRepoModal from './components/shared/AddRepoModal';
+import { RepoSwitcher } from './components/shared/RepoSwitcher';
 import ConfirmDialog from './components/shared/ConfirmDialog';
 import CloseIssueDialog from './components/shared/CloseIssueDialog';
 import type { IssueComment, IssueDetail as IssueDetailType, KanbanColumnData, PatchRef, PriorityLevel } from './types/kanban';
@@ -308,6 +309,7 @@ export default function App() {
   const [activeRid, setActiveRid] = useState<string | null>(null);
   const [repoNames, setRepoNames] = useState<Map<string, string>>(new Map());
   const [addRepoOpen, setAddRepoOpen] = useState(false);
+  const [repoSwitcherOpen, setRepoSwitcherOpen] = useState(false);
   const [confirmRemoveRid, setConfirmRemoveRid] = useState<string | null>(null);
   const [columns, setColumns] = useState<KanbanColumnData[]>([]);
   const [issueDetails, setIssueDetails] = useState<Map<string, IssueDetailType>>(new Map());
@@ -1002,6 +1004,17 @@ function handleGlobalInboxOpen() {
   }
 
   useEffect(() => {
+    function onSwitcherKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setRepoSwitcherOpen((v) => !v);
+      }
+    }
+    window.addEventListener('keydown', onSwitcherKey);
+    return () => window.removeEventListener('keydown', onSwitcherKey);
+  }, []);
+
+  useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
       if (settingsOpen) { setSettingsOpen(false); return; }
@@ -1174,6 +1187,13 @@ function handleGlobalInboxOpen() {
               </button>
             ))}
             <button className={styles.tabAdd} onClick={() => setAddRepoOpen(true)} aria-label="Add board">+</button>
+            <button
+              className={styles.tabSearch}
+              onClick={() => setRepoSwitcherOpen(true)}
+              title="Quick switch repo (Ctrl+K)"
+            >
+              <span>⌘</span> search <kbd>Ctrl+K</kbd>
+            </button>
           </nav>
 
           <Tabs
@@ -1315,6 +1335,14 @@ function handleGlobalInboxOpen() {
             existingRids={setup!.rids}
             onAdd={handleAddRepo}
             onClose={() => setAddRepoOpen(false)}
+          />
+          <RepoSwitcher
+            open={repoSwitcherOpen}
+            rids={setup!.rids}
+            repoNames={repoNames}
+            activeRid={activeRid}
+            onSelect={(rid) => { setActiveRid(rid); setSelectedPatch(null); if (activeView === 'patch-files') setActiveView('patches'); }}
+            onClose={() => setRepoSwitcherOpen(false)}
           />
           <ConfirmDialog
             open={confirmRemoveRid !== null}
