@@ -752,6 +752,20 @@ export default function App() {
     invoke('save_config', { config: next }).catch(console.error);
   }
 
+  const issuesListWidthTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function handleIssuesListWidthChange(width: number) {
+    if (!setup) return;
+    if (issuesListWidthTimer.current) clearTimeout(issuesListWidthTimer.current);
+    issuesListWidthTimer.current = setTimeout(() => {
+      setSetup((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev, issuesListWidth: width };
+        invoke('save_config', { config: next }).catch(console.error);
+        return next;
+      });
+    }, 300);
+  }
+
   function handleColumnsReorder(newCols: KanbanColumnData[]) {
     if (!setup || !activeRid) return;
     const dynamicOrder = newCols
@@ -1185,6 +1199,8 @@ function handleGlobalInboxOpen() {
                 returnLabel={issueReturnView === 'kanban' ? 'Back to board' : issueReturnView ? `Back to ${issueReturnView}` : undefined}
                 startCreating={issueCreating}
                 onCreatingChange={setIssueCreating}
+                initialListWidth={setup.issuesListWidth}
+                onListWidthChange={handleIssuesListWidthChange}
               />
             )}
             {(activeView === 'patches' || activeView === 'patch-files') && (

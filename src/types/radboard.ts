@@ -210,4 +210,6 @@ export interface AppSetup {
   lastActiveView?: string;
   /** label prefix used to identify milestone labels, default "milestone:" */
   milestonePrefix?: string;
+  /** persisted width of the issue list pane in IssuesView */
+  issuesListWidth?: number;
 }

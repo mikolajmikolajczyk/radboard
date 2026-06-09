@@ -27,6 +27,8 @@ interface Props {
   returnLabel?: string;
   startCreating?: boolean;
   onCreatingChange?: (creating: boolean) => void;
+  initialListWidth?: number;
+  onListWidthChange?: (width: number) => void;
 }
 
 export default function IssuesView({
@@ -37,6 +39,8 @@ export default function IssuesView({
   returnLabel,
   startCreating,
   onCreatingChange,
+  initialListWidth,
+  onListWidthChange,
 }: Props) {
   const { columnColors, myDid, delegateDids } = useRepo();
   const { onPriorityChange } = useActions();
@@ -62,7 +66,10 @@ export default function IssuesView({
   const assigneeDropdownRef = useRef<HTMLDivElement>(null);
 
   const { width: listWidth, dividerProps, isDragging } = useResizableDivider({
-    initial: Math.round(window.innerWidth / 2), min: 200, max: Math.round(window.innerWidth * 0.75),
+    initial: initialListWidth ?? Math.round(window.innerWidth / 2),
+    min: 360,
+    max: Math.round(window.innerWidth * 0.75),
+    onResize: onListWidthChange,
   });
 
   useOutsideClick(labelDropdownRef, () => setLabelDropdownOpen(false), labelDropdownOpen);
@@ -403,11 +410,6 @@ export default function IssuesView({
                 {issue.blockedIssueIds && issue.blockedIssueIds.length > 0 && (
                   <span className={styles.rowBlocksPill}>blocks {issue.blockedIssueIds.length}</span>
                 )}
-                {issue.isEpic && (
-                  <span className={styles.rowEpicPill} title={issue.epicChildIds ? `epic with ${issue.epicChildIds.length} child${issue.epicChildIds.length === 1 ? '' : 'ren'}` : 'epic (no children yet)'}>
-                    epic{issue.epicChildIds ? ` ${issue.epicChildIds.length}` : ''}
-                  </span>
-                )}
                 {issue.parentRaw && (
                   <span
                     className={`${styles.rowParentPill} ${!issue.parentId ? styles.rowParentPillOrphan : ''}`}
@@ -487,6 +489,12 @@ export default function IssuesView({
                   );
                 })()}
                   </div>
+                  {issue.isEpic && (
+                    <span
+                      className={styles.rowEpicPill}
+                      title={issue.epicChildIds ? `epic with ${issue.epicChildIds.length} child${issue.epicChildIds.length === 1 ? '' : 'ren'}` : 'epic (no children yet)'}
+                    >epic{issue.epicChildIds ? ` ${issue.epicChildIds.length}` : ''}</span>
+                  )}
                 </div>
                 <span className={styles.author} title={issue.author}>
                   {issue.author.length > 7 ? issue.author.slice(0, 7) + '…' : issue.author}
