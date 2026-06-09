@@ -1,4 +1,10 @@
 # Changelog
+## v0.7.2 — 2026-06-09
+
+### Bug Fixes
+
+- skip auto-labels for non-delegate issue creation
+
 ## v0.7.1 — 2026-06-09
 
 ### Bug Fixes
