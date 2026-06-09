@@ -9,6 +9,14 @@
 Direnv is supported via `.envrc` (one-time `direnv allow`).
 
 > **Note (non-NixOS + NVIDIA):** the nix devShell mixes nix WebKitGTK with system NVIDIA EGL, which can crash the dev binary at startup. On such systems, install `pnpm` and `rustup` via your distro and run commands bare.
+>
+> **Note (WSL / WSLg):** WSLg's GPU passthrough doesn't expose a working EGL surface for WebKitGTK — the dev window will be blank or crash on launch. Force software rendering:
+>
+> ```bash
+> WEBKIT_DISABLE_DMABUF_RENDERER=1 LIBGL_ALWAYS_SOFTWARE=1 pnpm tauri dev
+> ```
+>
+> Same flags work for shipped binaries (`radboard`).
 
 ## Local development
 

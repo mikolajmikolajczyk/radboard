@@ -31,6 +31,20 @@ Or install via `nix run`:
 nix run 'git+https://seed.mikolajczyk.org/z2ouXvht3Vj3WKay9ra6voFRG8C7n.git'
 ```
 
+Arch / CachyOS — AUR package `radboard-bin`:
+
+```bash
+yay -S radboard-bin       # or paru -S radboard-bin
+```
+
+> **WSL (WSLg):** If the window stays blank or crashes on launch, run with
+> software rendering — WSLg's GPU passthrough doesn't expose a working
+> EGL surface for WebKitGTK:
+>
+> ```bash
+> WEBKIT_DISABLE_DMABUF_RENDERER=1 LIBGL_ALWAYS_SOFTWARE=1 radboard
+> ```
+
 ## Development
 
 ```bash
