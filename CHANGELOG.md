@@ -1,4 +1,10 @@
 # Changelog
+## v0.8.2 — 2026-06-09
+
+### Bug Fixes
+
+- bundle Noto Color Emoji and extend font stack (f7cd467)
+
 ## v0.8.1 — 2026-06-09
 
 ### Features
