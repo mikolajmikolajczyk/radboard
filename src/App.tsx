@@ -1093,8 +1093,24 @@ function handleGlobalInboxOpen() {
     onCommentsLoaded: handleCommentsLoaded,
   }), [activeRid, setup, columns, issueDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function startResize(direction: 'North' | 'South' | 'East' | 'West' | 'NorthEast' | 'NorthWest' | 'SouthEast' | 'SouthWest') {
+    return (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      getCurrentWindow().startResizeDragging(direction).catch(console.error);
+    };
+  }
+
   return (
     <div className={styles.root} style={{ zoom }} data-theme={theme}>
+      <div className={`${styles.resizeHandle} ${styles.resizeN}`}  onPointerDown={startResize('North')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeS}`}  onPointerDown={startResize('South')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeW}`}  onPointerDown={startResize('West')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeE}`}  onPointerDown={startResize('East')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeNW}`} onPointerDown={startResize('NorthWest')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeNE}`} onPointerDown={startResize('NorthEast')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeSW}`} onPointerDown={startResize('SouthWest')} />
+      <div className={`${styles.resizeHandle} ${styles.resizeSE}`} onPointerDown={startResize('SouthEast')} />
       <header
         className={styles.topbar}
         data-tauri-drag-region

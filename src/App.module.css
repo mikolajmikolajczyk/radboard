@@ -6,7 +6,23 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
+
+.resizeHandle {
+  position: fixed;
+  z-index: 10000;
+  user-select: none;
+}
+
+.resizeN  { top: 0; left: 16px; right: 16px; height: 8px; cursor: ns-resize; }
+.resizeS  { bottom: 0; left: 16px; right: 16px; height: 8px; cursor: ns-resize; }
+.resizeW  { left: 0; top: 16px; bottom: 16px; width: 8px; cursor: ew-resize; }
+.resizeE  { right: 0; top: 16px; bottom: 16px; width: 8px; cursor: ew-resize; }
+.resizeNW { top: 0; left: 0; width: 18px; height: 18px; cursor: nwse-resize; }
+.resizeNE { top: 0; right: 0; width: 18px; height: 18px; cursor: nesw-resize; }
+.resizeSW { bottom: 0; left: 0; width: 18px; height: 18px; cursor: nesw-resize; }
+.resizeSE { bottom: 0; right: 0; width: 18px; height: 18px; cursor: nwse-resize; }
 
 /* ── Top bar ────────────────────────────────────────────────────────────────── */
 
