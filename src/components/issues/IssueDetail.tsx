@@ -412,15 +412,21 @@ export default function IssueDetail({ issue, currentColumnId, onClose, embedded 
         {issue && (
           <>
             <header className={styles.header}>
-              <span
-                className={`${styles.issueId} ${issueUrl(issue.rid, issue.id) ? styles.externalLink : ''}`}
-                onClick={() => { const u = issueUrl(issue.rid, issue.id); if (u) openUrl(u); }}
-                title={issueUrl(issue.rid, issue.id) ? 'Open in Radicle Explorer' : undefined}
-              >
-                <span className={styles.idDot} />
-                {issue.id.slice(0, 8)}…
-              </span>
-              <IssueIdBadge id={issue.id} title="Click to copy full issue id" />
+              <div className={styles.headerMeta}>
+                <IssueIdBadge
+                  id={issue.id}
+                  title="Click to copy full issue id (middle-click to open in Explorer)"
+                  onSecondary={() => { const u = issueUrl(issue.rid, issue.id); if (u) openUrl(u); }}
+                />
+                {issueUrl(issue.rid, issue.id) && (
+                  <button
+                    type="button"
+                    className={styles.explorerBtn}
+                    onClick={() => { const u = issueUrl(issue.rid, issue.id); if (u) openUrl(u); }}
+                    title="Open in Radicle Explorer"
+                  >↗</button>
+                )}
+              </div>
               <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
                 ✕
               </button>
