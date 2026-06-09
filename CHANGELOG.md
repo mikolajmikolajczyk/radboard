@@ -1,4 +1,10 @@
 # Changelog
+## v0.8.1 — 2026-06-09
+
+### Features
+
+- show priority badge per issue (9521e78)
+
 ## v0.8.0 — 2026-06-09
 
 ### Bug Fixes
@@ -16,6 +22,7 @@
 ### Refactor
 
 - right-align good-first-issue leaf next to epic pill
+- migrate to radicle crate 0.24 (fcdd6f4)
 
 ## v0.7.4 — 2026-06-09
 
