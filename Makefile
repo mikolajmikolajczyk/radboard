@@ -20,11 +20,11 @@ PNPM_STORE     := $(HOME)/.local/share/pnpm/store
 BUNDLE := $(CURDIR)/target/release/bundle
 
 docker-image:
-	docker build -f Dockerfile.build -t $(BUILDER_IMAGE) .
+	docker build --network=host -f Dockerfile.build -t $(BUILDER_IMAGE) .
 
 build: docker-image
 	mkdir -p $(DOCKER_TARGET) $(CARGO_REGISTRY) $(PNPM_STORE)
-	docker run --rm \
+	docker run --rm --network=host \
 	  -v $(CURDIR):/src \
 	  -v $(DOCKER_TARGET):/src/target \
 	  -v $(CARGO_REGISTRY):/root/.cargo/registry \
