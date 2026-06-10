@@ -1,4 +1,14 @@
 # Changelog
+## v0.8.6 — 2026-06-10
+
+### Bug Fixes
+
+- exclude solved/closed from dynamic state filters
+
+### Features
+
+- surface backend errors via dismissable banner
+
 ## v0.8.5 — 2026-06-10
 
 ### Bug Fixes
