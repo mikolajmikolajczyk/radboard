@@ -334,6 +334,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [issueCreating, setIssueCreating] = useState(false);
   const [pendingCloseIssue, setPendingCloseIssue] = useState<{ issueId: string; fromColId: string; source: 'kanban' | 'state' } | null>(null);
+  const [appError, setAppError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [globalInboxOpen, setGlobalInboxOpen] = useState(false);
@@ -641,7 +642,7 @@ export default function App() {
       setPendingCloseIssue({ issueId, fromColId, source: 'kanban' });
       return;
     } else if (fromColId === 'closed') {
-      invoke('set_issue_state', { rid: activeRid, issueId, state: 'open' }).catch(console.error);
+      invoke('set_issue_state', { rid: activeRid, issueId, state: 'open' }).catch((e) => { console.error(e); setAppError(`Reopen failed: ${String(e)}`); });
     }
 
     completeIssueMove(issueId, fromColId, toColId);
@@ -832,7 +833,7 @@ export default function App() {
       setPendingCloseIssue({ issueId, fromColId: currentColId, source: 'state' });
       return;
     } else if (currentColId === 'closed') {
-      invoke('set_issue_state', { rid: activeRid, issueId, state: 'open' }).catch(console.error);
+      invoke('set_issue_state', { rid: activeRid, issueId, state: 'open' }).catch((e) => { console.error(e); setAppError(`Reopen failed: ${String(e)}`); });
     }
 
     completeStateChange(issueId, currentColId, newColumnId);
@@ -868,7 +869,7 @@ export default function App() {
     if (!pendingCloseIssue || !activeRid) return;
     const { issueId, fromColId, source } = pendingCloseIssue;
     setPendingCloseIssue(null);
-    invoke('set_issue_state', { rid: activeRid, issueId, state }).catch(console.error);
+    invoke('set_issue_state', { rid: activeRid, issueId, state }).catch((e) => { console.error(e); setAppError(`Close issue failed: ${String(e)}`); });
     if (source === 'kanban') {
       completeIssueMove(issueId, fromColId, 'closed');
     } else {
@@ -1131,6 +1132,12 @@ function handleGlobalInboxOpen() {
 
   return (
     <div className={styles.root} style={{ zoom }} data-theme={theme}>
+      {appError && (
+        <div className={styles.errorBanner} role="alert">
+          <span className={styles.errorBannerMsg}>{appError}</span>
+          <button className={styles.errorBannerClose} onClick={() => setAppError(null)} aria-label="Dismiss">✕</button>
+        </div>
+      )}
       <div className={`${styles.resizeHandle} ${styles.resizeN}`}  onPointerDown={startResize('North')} />
       <div className={`${styles.resizeHandle} ${styles.resizeS}`}  onPointerDown={startResize('South')} />
       <div className={`${styles.resizeHandle} ${styles.resizeW}`}  onPointerDown={startResize('West')} />
