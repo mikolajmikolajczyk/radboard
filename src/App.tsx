@@ -315,6 +315,7 @@ export default function App() {
   const [repoSwitcherOpen, setRepoSwitcherOpen] = useState(false);
   const [confirmRemoveRid, setConfirmRemoveRid] = useState<string | null>(null);
   const [columns, setColumns] = useState<KanbanColumnData[]>([]);
+  const [columnsRid, setColumnsRid] = useState<string | null>(null);
   const [issueDetails, setIssueDetails] = useState<Map<string, IssueDetailType>>(new Map());
   const [rawPatches, setRawPatches] = useState<RawPatchData[]>([]);
   const [selectedPatch, setSelectedPatch] = useState<PatchRef | null>(null);
@@ -479,6 +480,7 @@ export default function App() {
           const columnOrder = setup.columnOrder?.[rid] ?? [];
           const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
           setColumns(cols);
+          setColumnsRid(rid);
           setIssueDetails(details);
         }).catch(console.error);
       });
@@ -509,6 +511,7 @@ export default function App() {
       const [cols, details] = issuesToColumns(issues, rid, columnOrder, setup.bannedUsers, [], setup.milestonePrefix ?? 'milestone:');
       startTransition(() => {
         setColumns(cols);
+        setColumnsRid(rid);
         setIssueDetails(details);
       });
       // Apply pending issue selection from inbox navigation
@@ -528,6 +531,7 @@ export default function App() {
       startTransition(() => {
         setRawPatches(patches);
         setColumns(cols);
+        setColumnsRid(rid);
         setIssueDetails(details);
       });
       // Apply pending patch selection from inbox navigation
@@ -550,6 +554,10 @@ export default function App() {
   // remove it via the column context menu (right-click → Remove column).
   useEffect(() => {
     if (!activeRid) return;
+    // Guard against stale-repo persistence: if columns still belong to the
+    // previous repo (load hasn't completed after a switch), don't write them
+    // under the new rid — that's how triage etc. leaked across repos.
+    if (columnsRid !== activeRid) return;
     const dynamicIds = columns
       .filter((c) => !c.isStatic && !STATIC_COL_IDS.has(c.id))
       .map((c) => c.id);
@@ -564,7 +572,7 @@ export default function App() {
       invoke('save_config', { config: next }).catch(console.error);
       return next;
     });
-  }, [columns, activeRid]);
+  }, [columns, activeRid, columnsRid]);
 
   function handleSetup(s: AppSetup) {
     const full = { ...s };
@@ -663,6 +671,7 @@ export default function App() {
         setRawPatches(patches);
         const [cols, details] = issuesToColumns(issues, rid, columnOrder, bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
         setColumns(cols);
+        setColumnsRid(rid);
         setIssueDetails(details);
       })
       .catch(console.error);
@@ -688,6 +697,7 @@ export default function App() {
         setRawPatches(patches);
         const [cols, details] = issuesToColumns(issues, rid, columnOrder, bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
         setColumns(cols);
+        setColumnsRid(rid);
         setIssueDetails(details);
       })
       .catch(console.error);
@@ -796,6 +806,7 @@ export default function App() {
       const columnOrder = setup.columnOrder?.[activeRid] ?? [];
       const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers, patches, setup.milestonePrefix ?? 'milestone:');
       setColumns(cols);
+      setColumnsRid(activeRid);
       setIssueDetails(details);
     } catch (e) {
       console.error(e);
@@ -847,6 +858,7 @@ export default function App() {
         const columnOrder = setup.columnOrder?.[activeRid] ?? [];
         const [cols, details] = issuesToColumns(issues, activeRid, columnOrder, setup.bannedUsers ?? [], patches, setup.milestonePrefix ?? 'milestone:');
         setColumns(cols);
+        setColumnsRid(activeRid);
         setIssueDetails(details);
       })
       .catch(console.error);
