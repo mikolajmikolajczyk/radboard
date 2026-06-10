@@ -96,6 +96,9 @@ export default function IssuesView({
     const isClosed = i.status === 'closed' || i.status === 'solved';
     if (f === 'closed') return isClosed;
     if (f === 'open') return !isClosed && !i.labels.some((l) => l.text.startsWith('state:'));
+    // 'epics' view: hide pure subtasks (have parent, not an epic themselves).
+    // Show standalone issues, epics, and nested epics.
+    if (f === 'epics') return i.isEpic || !i.parentRaw;
     // dynamic state
     return i.labels.some((l) => l.text === `state:${f}`);
   }
@@ -177,7 +180,7 @@ export default function IssuesView({
     pushWithChildren(rootOf(issue));
   }
 
-  const allFilters: Filter[] = ['all', 'open', ...dynamicStates, 'closed'];
+  const allFilters: Filter[] = ['all', 'epics', 'open', ...dynamicStates, 'closed'];
   const counts = Object.fromEntries(allFilters.map((f) => [f, allIssues.filter((i) => issueMatchesFilter(i, f)).length]));
 
   const listRef = useRef<HTMLDivElement>(null);
