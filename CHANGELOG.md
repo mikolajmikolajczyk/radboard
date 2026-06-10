@@ -1,4 +1,10 @@
 # Changelog
+## v0.8.3 — 2026-06-10
+
+### Bug Fixes
+
+- use host network for docker build and run
+
 ## v0.8.2 — 2026-06-09
 
 ### Bug Fixes

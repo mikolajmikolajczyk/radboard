@@ -1,6 +1,6 @@
 [package]
 name = "radboard"
-version = "0.8.2"
+version = "0.8.3"
 description = "Desktop Kanban board for Radicle repositories"
 authors = ["Mikołaj Mikołajczyk <mikolajczyk.mikolajm@gmail.com>"]
 homepage = "https://radboard.mikolajczyk.org"
