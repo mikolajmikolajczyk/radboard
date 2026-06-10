@@ -1,4 +1,10 @@
 # Changelog
+## v0.8.5 — 2026-06-10
+
+### Bug Fixes
+
+- scope column persistence to source rid
+
 ## v0.8.4 — 2026-06-10
 
 ### Bug Fixes
