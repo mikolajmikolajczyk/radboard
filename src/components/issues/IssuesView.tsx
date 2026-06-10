@@ -152,21 +152,29 @@ export default function IssuesView({
   const filteredById = new Map(filteredRaw.map((i) => [i.id, i]));
   const placedIds = new Set<string>();
   const filtered: typeof filteredRaw = [];
-  for (const issue of filteredRaw) {
-    if (placedIds.has(issue.id)) continue;
-    // Skip children whose parent is also in the filtered set — they'll be
-    // pushed when we visit the parent.
-    if (issue.parentId && filteredById.has(issue.parentId)) continue;
+  function pushWithChildren(issue: typeof filteredRaw[number]) {
+    if (placedIds.has(issue.id)) return;
     filtered.push(issue);
     placedIds.add(issue.id);
-    if (issue.epicChildIds) {
-      for (const cid of issue.epicChildIds) {
-        const child = filteredById.get(cid);
-        if (!child || placedIds.has(cid)) continue;
-        filtered.push(child);
-        placedIds.add(cid);
-      }
+    if (!issue.epicChildIds) return;
+    for (const cid of issue.epicChildIds) {
+      const child = filteredById.get(cid);
+      if (!child) continue;
+      pushWithChildren(child);
     }
+  }
+  // Find ultimate-root ancestor reachable through filtered parents.
+  function rootOf(issue: typeof filteredRaw[number]) {
+    let cur = issue;
+    const seen = new Set<string>();
+    while (cur.parentId && filteredById.has(cur.parentId) && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      cur = filteredById.get(cur.parentId)!;
+    }
+    return cur;
+  }
+  for (const issue of filteredRaw) {
+    pushWithChildren(rootOf(issue));
   }
 
   const allFilters: Filter[] = ['all', 'open', ...dynamicStates, 'closed'];
