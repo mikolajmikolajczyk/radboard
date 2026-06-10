@@ -8,7 +8,7 @@ ifndef VERSION
   _MAJOR := $(word 1,$(subst ., ,$(CURRENT_VERSION)))
   _MINOR := $(word 2,$(subst ., ,$(CURRENT_VERSION)))
   _PATCH := $(word 3,$(subst ., ,$(CURRENT_VERSION)))
-  VERSION := $(_MAJOR).$(_MINOR).$(shell echo $$((_PATCH + 1)))
+  VERSION := $(_MAJOR).$(_MINOR).$(shell echo $$(($(_PATCH) + 1)))
 endif
 
 # Docker build configuration
