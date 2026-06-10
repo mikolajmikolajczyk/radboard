@@ -1,4 +1,15 @@
 # Changelog
+## v0.8.4 — 2026-06-10
+
+### Bug Fixes
+
+- expand _PATCH var in shell arithmetic
+- show all descendants of nested epics in list view
+
+### Features
+
+- add Epics filter to hide pure subtasks
+
 ## v0.8.3 — 2026-06-10
 
 ### Bug Fixes
