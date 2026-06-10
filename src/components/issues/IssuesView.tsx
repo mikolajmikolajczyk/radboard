@@ -99,7 +99,9 @@ export default function IssuesView({
     // 'epics' view: hide pure subtasks (have parent, not an epic themselves).
     // Show standalone issues, epics, and nested epics.
     if (f === 'epics') return i.isEpic || !i.parentRaw;
-    // dynamic state
+    // dynamic state — exclude solved/closed since they sit in Closed column
+    // regardless of lingering state:* labels (matches kanban behavior).
+    if (isClosed) return false;
     return i.labels.some((l) => l.text === `state:${f}`);
   }
 
